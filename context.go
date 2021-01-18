@@ -117,6 +117,10 @@ func (c *Context) Push(data *Response) error {
 	return c.Srv.Push(c.SID, data)
 }
 
+func (c *Context) GetAllSID() []string {
+	return c.Server.GetAllSID()
+}
+
 func (c *Context) Broadcast(data *Response) {
 	c.Srv.Broadcast(data)
 }

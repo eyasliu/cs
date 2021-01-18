@@ -14,74 +14,76 @@ import (
 )
 
 func main() {
-    // 初始化 websocket
-    ws := xwebsocket.New()
-    http.Handler("/ws", ws.Handler)
+	// 初始化 websocket
+	ws := xwebsocket.New()
+	http.Handle("/ws", ws)
 
-    srv := cmdsrv.New(ws)
+	srv := cmdsrv.New(ws)
 
-    srv.Use(cmdsrv.AccessLogger(log)) // 打印请求响应日志
-    srv.Use(cmdsrv.Error()) // 统一错误处理，消化 panic 错误
+	srv.Use(cmdsrv.AccessLogger("MYSRV")) // 打印请求响应日志
+	srv.Use(cmdsrv.Recover())             // 统一错误处理，消化 panic 错误
 
-    srv.Handle("register", func(c *cmdsrv.Context) {
-        // 定义请求数据
-        var body struct{
-            UID int `p:"uid" v:"required"`
-            Name string `p:"name" v:"required|min:4#必需指定名称|名称长度必需大于4位"`
-        }
-        // 解析请求数据
-        if err := c.Parse(&body); err != nil {
-            c.Err(err, 401)
-            return
-        }
-        // 设置会话状态数据
-        c.Set("uid", body.UID)
-        c.Set("name", body.Name)
+	srv.Handle("register", func(c *cmdsrv.Context) {
+		// 定义请求数据
+		var body struct {
+			UID  int    `p:"uid" v:"required"`
+			Name string `p:"name" v:"required|min:4#必需指定名称|名称长度必需大于4位"`
+		}
+		// 解析请求数据
+		if err := c.Parse(&body); err != nil {
+			c.Err(err, 401)
+			return
+		}
+		// 设置会话状态数据
+		c.Set("uid", body.UID)
+		c.Set("name", body.Name)
 
-        // 响应消息
-        c.OK(map[string]interface{}{
-            "timestamp": time.Now().Unix(),
-        })
+		// 响应消息
+		c.OK(map[string]interface{}{
+			"timestamp": time.Now().Unix(),
+		})
 
-        // 给所有连接广播消息
-        c.Broadcast(&cmdsrv.Response{
-            Cmd: "someone_online",
-            Data: body,
-        })
+		// 给所有连接广播消息
+		c.Broadcast(&cmdsrv.Response{
+			Cmd:  "someone_online",
+			Data: body,
+		})
 
-        // 往当前连接主动推送消息
-        c.Push(&cmdsrv.Response{
-            Cmd: "welcome",
-            Data: "welcome to register my server",
-        })
+		// 往当前连接主动推送消息
+		c.Push(&cmdsrv.Response{
+			Cmd:  "welcome",
+			Data: "welcome to register my server",
+		})
 
-        // 遍历所有在线会话，获取其他会话的状态，并往指定会话推送消息
-        for _, sid := range c.GetAllSID() {
-            if c.Srv.GetState(sid, "uid") != nil {
-                c.Srv.Push(sid, &cmdsrv.Response{
-                    Cmd: "firend_online",
-                    Data: "your firend is online",
-                })
-            }
-        }
-    })
+		// 遍历所有在线会话，获取其他会话的状态，并往指定会话推送消息
+		for _, sid := range c.GetAllSID() {
+			if c.Server.GetState(sid, "uid") != nil {
+				c.Srv.Push(sid, &cmdsrv.Response{
+					Cmd:  "firend_online",
+					Data: "your firend is online",
+				})
+			}
+		}
+	})
 
-    // 分组
-    group := srv.Group(func (c *cmdsrv.Context) {
-        // 过滤指定会话
-        if _, ok := c.Get("uid").(int); !ok {
-            c.Err(errors.New("unregister session"))
-            return
-        }
-        c.Next()
-    })
+	// 分组
+	group := srv.Group(func(c *cmdsrv.Context) {
+		// 过滤指定会话
+		if _, ok := c.Get("uid").(int); !ok {
+			c.Err(errors.New("unregister session"), 101)
+			return
+		}
+		c.Next()
+	})
 
-    group.Handle("userinfo", func(c *cmdsrv.Context) {
-        uid := c.Get("uid").(int) // 中间件已处理过，可大胆断言
-        c.OK(findUserByUID(uid))
-    })
+	group.Handle("userinfo", func(c *cmdsrv.Context) {
+		uid := c.Get("uid").(int) // 中间件已处理过，可大胆断言
+		c.OK(map[string]interface{}{
+			"uid": uid,
+		})
+	})
 
-    log.Fatal(http.ListenAndServe(":8080", nil))
+	log.Fatal(http.ListenAndServe(":8080", nil))
 }
 ```
 

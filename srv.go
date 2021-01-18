@@ -3,7 +3,7 @@ package cmdsrv
 import "errors"
 
 type Srv struct {
-	server     ServerAdapter
+	Server     ServerAdapter
 	middleware []HandlerFunc
 	routes     map[string][]HandlerFunc
 }
@@ -16,7 +16,7 @@ type Srv struct {
 
 func New(server ServerAdapter) *Srv {
 	return &Srv{
-		server: server,
+		Server: server,
 		routes: map[string][]HandlerFunc{},
 	}
 }
@@ -51,18 +51,18 @@ func (s *Srv) Handle(cmd string, handlers ...HandlerFunc) *Srv {
 }
 
 func (s *Srv) Push(sid string, resp *Response) error {
-	return s.server.Write(sid, resp)
+	return s.Server.Write(sid, resp)
 }
 
 func (s *Srv) Broadcast(resp *Response) {
-	for _, sid := range s.server.GetAllSid() {
-		s.server.Write(sid, resp)
+	for _, sid := range s.Server.GetAllSID() {
+		s.Server.Write(sid, resp)
 	}
 }
 
 func (s *Srv) receive() error {
 	for {
-		sid, req, err := s.server.Read()
+		sid, req, err := s.Server.Read()
 		if err != nil {
 			return err
 		}
@@ -75,13 +75,15 @@ func (s *Srv) receive() error {
 			ctx := &Context{
 				Response: &Response{
 					Request: req,
+					Cmd:     req.Cmd,
+					Seqno:   req.Seqno,
 					Code:    -1,
 					Msg:     msgUnsupportCmd,
 					Data:    struct{}{},
 				},
 				SID:    sid,
 				Srv:    s,
-				Server: s.server,
+				Server: s.Server,
 			}
 
 			defer func() {

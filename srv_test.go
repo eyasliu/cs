@@ -43,7 +43,7 @@ func (a *testAdapter) SetState(sid, key string, v interface{}) {
 	a.state[key] = v
 	a.stateMu.Unlock()
 }
-func (a *testAdapter) GetAllSid() []string {
+func (a *testAdapter) GetAllSID() []string {
 	return []string{"1"}
 }
 

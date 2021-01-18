@@ -19,6 +19,8 @@ type Request struct {
 // Response reply Request message
 type Response struct {
 	*Request             // reply the Request
+	Cmd      string      // message command, use for route
+	Seqno    string      // seq number,the request id
 	Code     int         // response status code
 	Msg      string      // response status message text
 	Data     interface{} // response data
@@ -38,6 +40,6 @@ type ServerAdapter interface {
 	// SetState set sid state data
 	SetState(sid string, key string, v interface{})
 
-	// GetAllSid get server all sid
-	GetAllSid() []string
+	// GetAllSID get server all sid
+	GetAllSID() []string
 }

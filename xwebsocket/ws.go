@@ -44,6 +44,10 @@ func (ws *WS) Handler(w http.ResponseWriter, req *http.Request) {
 	ws.newConn(sid, conn)
 }
 
+func (ws *WS) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	ws.Handler(w, req)
+}
+
 func (ws *WS) Read() (string, *cmdsrv.Request, error) {
 	m, ok := <-ws.receive
 	if !ok {
@@ -82,6 +86,14 @@ func (ws *WS) SetState(sid, key string, v interface{}) {
 		conn.state = make(map[string]interface{})
 	}
 	conn.state[key] = v
+}
+
+func (ws *WS) GetAllSID() []string {
+	sids := make([]string, len(ws.session))
+	for sid := range ws.session {
+		sids = append(sids, sid)
+	}
+	return sids
 }
 
 func (ws *WS) newConn(sid string, conn *websocket.Conn) {
