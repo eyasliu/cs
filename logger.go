@@ -30,6 +30,12 @@ func AccessLogger(args ...interface{}) HandlerFunc {
 		}
 	}
 	return func(c *Context) {
+		if c.Cmd == CmdConnected ||
+			c.Cmd == CmdClosed ||
+			c.Cmd == CmdHeartbeat {
+			c.Next()
+			return
+		}
 		logger.Debug(fmt.Sprintf("%s RECV CMD=%s SEQ=%s %s", name, c.Cmd, c.Seqno, string(c.RawData)))
 		c.Next()
 		logger.Debug(fmt.Sprintf("%s RESP CMD=%s SEQ=%s %v", name, c.Cmd, c.Seqno, c.Response.Data))
