@@ -9,7 +9,6 @@ import (
 
 type Conn struct {
 	*websocket.Conn
-	state   map[string]interface{}
 	writeMu sync.Mutex
 }
 

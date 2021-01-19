@@ -35,11 +35,6 @@ type ServerAdapter interface {
 	// Close close specify connect
 	Close(sid string) error
 
-	// GetState get sid state data
-	GetState(sid string, key string) interface{}
-	// SetState set sid state data
-	SetState(sid string, key string, v interface{})
-
 	// GetAllSID get server all sid
 	GetAllSID() []string
 }

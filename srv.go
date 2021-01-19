@@ -1,11 +1,16 @@
 package cmdsrv
 
-import "errors"
+import (
+	"errors"
+
+	"github.com/gogf/gf/os/gcache"
+)
 
 type Srv struct {
 	Server     ServerAdapter
 	middleware []HandlerFunc
 	routes     map[string][]HandlerFunc
+	state      *State
 }
 
 // type SrvGroup interface {
@@ -18,6 +23,7 @@ func New(server ServerAdapter) *Srv {
 	return &Srv{
 		Server: server,
 		routes: map[string][]HandlerFunc{},
+		state:  &State{cache: gcache.New()},
 	}
 }
 
@@ -64,6 +70,11 @@ func (s *Srv) Close(sid string) error {
 	return s.Server.Close(sid)
 }
 
+func (s *Srv) onSidConnected(sid string) {}
+func (s *Srv) onSidClosed(sid string) {
+	s.state.destroySid(sid)
+}
+
 func (s *Srv) receive() error {
 	for {
 		sid, req, err := s.Server.Read()
@@ -88,6 +99,14 @@ func (s *Srv) receive() error {
 				SID:    sid,
 				Srv:    s,
 				Server: s.Server,
+			}
+
+			// call internal hooks
+			switch req.Cmd {
+			case CmdConnected:
+				s.onSidConnected(sid)
+			case CmdClosed:
+				s.onSidClosed(sid)
 			}
 
 			// internal will not response

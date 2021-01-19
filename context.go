@@ -83,10 +83,10 @@ func (c *Context) Parse(pointer interface{}, mapping ...map[string]string) error
 }
 
 func (c *Context) Get(key string) interface{} {
-	return c.Server.GetState(c.SID, key)
+	return c.Srv.state.Get(c.SID, key)
 }
 func (c *Context) Set(key string, v interface{}) {
-	c.Server.SetState(c.SID, key, v)
+	c.Srv.state.Set(c.SID, key, v)
 }
 
 func (c *Context) Err(err error, code int) {

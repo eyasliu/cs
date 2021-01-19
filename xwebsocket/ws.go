@@ -72,26 +72,6 @@ func (ws *WS) Close(sid string) error {
 	return ws.destroyConn(sid)
 }
 
-func (ws *WS) GetState(sid, key string) interface{} {
-	conn, ok := ws.session[sid]
-	if !ok {
-		return nil
-	}
-	data := conn.state[key]
-	return data
-}
-
-func (ws *WS) SetState(sid, key string, v interface{}) {
-	conn, ok := ws.session[sid]
-	if !ok {
-		return
-	}
-	if conn.state == nil {
-		conn.state = make(map[string]interface{})
-	}
-	conn.state[key] = v
-}
-
 func (ws *WS) GetAllSID() []string {
 	sids := make([]string, len(ws.session))
 	for sid := range ws.session {
@@ -102,8 +82,7 @@ func (ws *WS) GetAllSID() []string {
 
 func (ws *WS) newConn(sid string, conn *websocket.Conn) {
 	ws.session[sid] = &Conn{
-		Conn:  conn,
-		state: map[string]interface{}{},
+		Conn: conn,
 	}
 	ws.receive <- &reqMessage{msgType: websocket.TextMessage, data: &cmdsrv.Request{
 		Cmd: cmdsrv.CmdConnected,
