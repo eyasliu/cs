@@ -60,6 +60,10 @@ func (s *Srv) Broadcast(resp *Response) {
 	}
 }
 
+func (s *Srv) Close(sid string) error {
+	return s.Server.Close(sid)
+}
+
 func (s *Srv) receive() error {
 	for {
 		sid, req, err := s.Server.Read()
