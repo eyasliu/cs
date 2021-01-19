@@ -8,8 +8,10 @@ import (
 	"github.com/gogf/gf/util/gvalid"
 )
 
+// HandlerFunc 消息处理函数，中间件和路由的函数签名
 type HandlerFunc = func(*Context)
 
+// Context 处理函数的的上下文对象，中间件和路由的函数参数
 type Context struct {
 	*Response
 	SID          string
@@ -20,6 +22,8 @@ type Context struct {
 	handlerAbort bool
 }
 
+// Next 调用下一层中间件。
+// 中间件的调用是按照洋葱模型调用，该方法应该只用在中间件函数使用
 func (c *Context) Next() {
 	if c.handlerAbort {
 		return
@@ -31,10 +35,16 @@ func (c *Context) Next() {
 		c.Abort()
 	}
 }
+
+// Abort 中断更里层的中间件调用
 func (c *Context) Abort() {
 	c.handlerAbort = true
 }
 
+// Parse 解析并验证消息携带的参数，参考 Goframe 的 请求输入-对象处理 https://itician.org/pages/viewpage.action?pageId=1114185
+// 支持 json 和 xml 数据流
+// 支持将数据解析为 *struct/**struct/*[]struct/*[]*struct/*map/*[]map
+// 如果目标值是 *struct/**struct/*[]struct/*[]*struct ，则会自动调用请求验证，参考 GoFrame 的 请求输入-请求校验 https://itician.org/pages/viewpage.action?pageId=1114244
 func (c *Context) Parse(pointer interface{}, mapping ...map[string]string) error {
 	var (
 		rv = reflect.ValueOf(pointer)
@@ -82,13 +92,18 @@ func (c *Context) Parse(pointer interface{}, mapping ...map[string]string) error
 	return nil
 }
 
+// Get 获取当前会话的状态，
+// 注意：这是会话的状态，而不是当前请求函数的状态（和HTTP那边不一样）
 func (c *Context) Get(key string) interface{} {
 	return c.Srv.state.Get(c.SID, key)
 }
+
+// Set 设置当前会话的状态
 func (c *Context) Set(key string, v interface{}) {
 	c.Srv.state.Set(c.SID, key, v)
 }
 
+// Err 响应错误，如果错误对象为空则忽略不处理
 func (c *Context) Err(err error, code int) {
 	if err != nil {
 		c.Response.Code = code
@@ -96,6 +111,10 @@ func (c *Context) Err(err error, code int) {
 	}
 }
 
+// OK 响应成功，参数是指定响应的 data 数据，如果不设置则默认为空对象
+// c.OK() 响应 {}
+// c.OK(nill) 响应 null
+// c.OK(map[string]interface{}{"x": 1}) 响应 {"x": 1}
 func (c *Context) OK(data ...interface{}) {
 	c.Response.Code = 0
 	c.Response.Msg = msgOk
@@ -105,6 +124,8 @@ func (c *Context) OK(data ...interface{}) {
 		c.Response.Data = data[0]
 	}
 }
+
+// Resp 设置响应
 func (c *Context) Resp(code int, msg string, data ...interface{}) {
 	c.Response.Code = code
 	c.Response.Msg = msg
@@ -113,22 +134,27 @@ func (c *Context) Resp(code int, msg string, data ...interface{}) {
 	}
 }
 
+// Push 往当前会话推送消息
 func (c *Context) Push(data *Response) error {
 	return c.Srv.Push(c.SID, data)
 }
 
+// Close 关闭当前会话连接
 func (c *Context) Close() error {
 	return c.Srv.Close(c.SID)
 }
 
+// GetAllSID 获取目前生效的所有会话ID
 func (c *Context) GetAllSID() []string {
 	return c.Server.GetAllSID()
 }
 
+// Broadcast 广播消息，即给所有有效的会话推送消息
 func (c *Context) Broadcast(data *Response) {
 	c.Srv.Broadcast(data)
 }
 
+// RouteNotFound 当路由没匹配到时的默认处理函数
 func RouteNotFound(c *Context) {
 	c.Resp(-1, msgUnsupportCmd)
 }

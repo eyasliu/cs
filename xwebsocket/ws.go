@@ -12,6 +12,7 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+// WS websocket 适配器
 type WS struct {
 	upgrader websocket.Upgrader
 	session  map[string]*Conn
@@ -21,6 +22,7 @@ type WS struct {
 
 var _ cmdsrv.ServerAdapter = &WS{}
 
+// New 实例化 websocket 适配器
 func New() *WS {
 	return &WS{
 		upgrader: websocket.Upgrader{
@@ -30,6 +32,11 @@ func New() *WS {
 		session: make(map[string]*Conn),
 		receive: make(chan *reqMessage, 50),
 	}
+}
+
+// Srv 使用该适配器创建命令消息服务
+func (ws *WS) Srv() *cmdsrv.Srv {
+	return cmdsrv.New(ws)
 }
 
 // Handler impl http.HandlerFunc to upgrade to websocket protocol
@@ -48,10 +55,12 @@ func (ws *WS) Handler(w http.ResponseWriter, req *http.Request) {
 	fmt.Println("connection")
 }
 
+// ServeHTTP impl http.Handler to upgrade to websocket protocol
 func (ws *WS) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	ws.Handler(w, req)
 }
 
+// Read 实现 cmdsrv.ServerAdapter 接口，读取消息，每次返回一条，循环读取
 func (ws *WS) Read() (string, *cmdsrv.Request, error) {
 	m, ok := <-ws.receive
 	if !ok {
@@ -60,6 +69,7 @@ func (ws *WS) Read() (string, *cmdsrv.Request, error) {
 	return m.sid, m.data, nil
 }
 
+// Write 实现 cmdsrv.ServerAdapter 接口，给连接推送消息
 func (ws *WS) Write(sid string, resp *cmdsrv.Response) error {
 	conn, ok := ws.session[sid]
 	if !ok {
@@ -68,10 +78,12 @@ func (ws *WS) Write(sid string, resp *cmdsrv.Response) error {
 	return conn.Send(resp)
 }
 
+// Close 实现 cmdsrv.ServerAdapter 接口，关闭指定连接
 func (ws *WS) Close(sid string) error {
 	return ws.destroyConn(sid)
 }
 
+// GetAllSID 实现 cmdsrv.ServerAdapter 接口，获取当前服务所有SID，用于遍历连接
 func (ws *WS) GetAllSID() []string {
 	sids := make([]string, len(ws.session))
 	for sid := range ws.session {
@@ -80,6 +92,7 @@ func (ws *WS) GetAllSID() []string {
 	return sids
 }
 
+// 初始化 ws 连接
 func (ws *WS) newConn(sid string, conn *websocket.Conn) {
 	ws.session[sid] = &Conn{
 		Conn: conn,
@@ -106,6 +119,7 @@ func (ws *WS) newConn(sid string, conn *websocket.Conn) {
 	}
 }
 
+// 销毁指定连接
 func (ws *WS) destroyConn(sid string) error {
 	conn, ok := ws.session[sid]
 	if !ok {

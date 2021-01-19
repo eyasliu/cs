@@ -1,10 +1,17 @@
 package cmdsrv
 
+// 内置命令
 const (
-	CmdConnected = "__cmdsrv_connected__" // on connection connected
-	CmdClosed    = "__cmdsrv_closed__"    // on connection closed
-	CmdHeartbeat = "__cmdsrv_heartbeat__" // receive heartbeat message
+	// CmdConnected on connection connected
+	CmdConnected = "__cmdsrv_connected__"
+	// CmdClosed on connection closed
+	CmdClosed = "__cmdsrv_closed__"
+	// CmdHeartbeat heartbeat message
+	CmdHeartbeat = "__cmdsrv_heartbeat__"
+)
 
+// 默认消息
+const (
 	msgOk           = "ok"
 	msgUnsupportCmd = "unsupport cmd"
 )

@@ -107,7 +107,7 @@ func ExampleFull() {
 
 		// 遍历所有在线会话，获取其他会话的状态，并往指定会话推送消息
 		for _, sid := range c.GetAllSID() {
-			if c.Server.GetState(sid, "uid") != nil {
+			if c.Srv.GetState(sid, "uid") != nil {
 				c.Srv.Push(sid, &cmdsrv.Response{
 					Cmd:  "firend_online",
 					Data: "your firend is online",

@@ -4,6 +4,8 @@ import (
 	"runtime/debug"
 )
 
+// Recover 错误处理中间件
+// 当处理函数发生 panic 时在该中间件恢复，并根据panic 的内容默认处理响应数据
 func Recover() HandlerFunc {
 	return func(c *Context) {
 		defer func() {

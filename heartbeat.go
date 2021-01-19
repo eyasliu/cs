@@ -5,6 +5,9 @@ import (
 	"time"
 )
 
+// Heartbeat 会话心跳维护，如果会话在指定周期内没有发送任何数据，则关闭该连接会话
+// timeout 心跳过期时长，指定当会话间隔
+// 重置心跳过期时间，当接收到了会话的任意命令，都会重置
 func Heartbeat(timeout time.Duration) HandlerFunc {
 	heartbeatTime := sync.Map{}
 	var srv *Srv
