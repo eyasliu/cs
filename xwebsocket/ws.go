@@ -1,6 +1,7 @@
 package xwebsocket
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -27,6 +28,7 @@ func New() *WS {
 			WriteBufferSize: 1024,
 		},
 		session: make(map[string]*Conn),
+		receive: make(chan *reqMessage, 50),
 	}
 }
 
@@ -42,6 +44,8 @@ func (ws *WS) Handler(w http.ResponseWriter, req *http.Request) {
 
 	defer ws.destroyConn(sid)
 	ws.newConn(sid, conn)
+
+	fmt.Println("connection")
 }
 
 func (ws *WS) ServeHTTP(w http.ResponseWriter, req *http.Request) {
@@ -105,15 +109,21 @@ func (ws *WS) newConn(sid string, conn *websocket.Conn) {
 		Cmd: cmdsrv.CmdConnected,
 	}, sid: sid}
 	for {
-		messageType, p, err := conn.ReadMessage()
+		messageType, payload, err := conn.ReadMessage()
 		if err != nil {
 			log.Println(err)
 			return
 		}
-		if err := conn.WriteMessage(messageType, p); err != nil {
-			log.Println(err)
-			return
+		r := &cmdsrv.Request{}
+		if len(payload) == 0 { // heartbeat
+			r.Cmd = cmdsrv.CmdHeartbeat
+			ws.receive <- &reqMessage{msgType: messageType, data: r, sid: sid}
+			continue
 		}
+		if err = json.Unmarshal(payload, r); err != nil {
+			continue
+		}
+		ws.receive <- &reqMessage{msgType: messageType, data: r, sid: sid}
 	}
 }
 

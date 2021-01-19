@@ -86,10 +86,14 @@ func (s *Srv) receive() error {
 				Server: s.Server,
 			}
 
-			defer func() {
-				// recover panic err
-				ctx.Push(ctx.Response)
-			}()
+			// internal will not response
+			if req.Cmd != CmdConnected &&
+				req.Cmd != CmdClosed &&
+				req.Cmd != CmdHeartbeat {
+				defer func() {
+					ctx.Push(ctx.Response)
+				}()
+			}
 
 			routeHandlers, ok := s.routes[req.Cmd]
 			var handlers []HandlerFunc

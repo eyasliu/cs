@@ -50,14 +50,15 @@ func TestWS(t *testing.T) {
 		srv.Handle("register", func(c *cmdsrv.Context) {
 			c.OK("login_success")
 		})
+		go srv.Run()
+		time.Sleep(100 * time.Millisecond)
 
 		res, err := sendToWs("ws://127.0.0.1:5679/ws", map[string]interface{}{
 			"cmd": "register",
 		})
 
-		t.AssertNE(err, nil)
+		t.Assert(err, nil)
 		t.Assert(res["data"], "login_success")
-
 	})
 
 }
