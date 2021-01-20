@@ -1,6 +1,7 @@
 package xwebsocket
 
 import (
+	"encoding/json"
 	"sync"
 
 	"github.com/eyasliu/cmdsrv"
@@ -17,6 +18,12 @@ type reqMessage struct {
 	sid     string
 	msgType int
 	data    *cmdsrv.Request
+}
+
+type requestData struct {
+	Cmd   string          `json:"cmd"`   // message command, use for route
+	Seqno string          `json:"seqno"` // seq number,the request id
+	Data  json.RawMessage `json:"data"`  // response data
 }
 
 type responseData struct {

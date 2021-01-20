@@ -82,6 +82,60 @@ func (s *Srv) SetState(sid, key string, val interface{}) {
 	s.state.Set(sid, key, val)
 }
 
+func (s *Srv) NewContext(sid string, req *Request) *Context {
+	ctx := &Context{
+		Response: &Response{
+			Request: req,
+			Cmd:     req.Cmd,
+			Seqno:   req.Seqno,
+			Code:    -1,
+			Msg:     msgUnsupportCmd,
+			Data:    struct{}{},
+		},
+		SID:    sid,
+		Srv:    s,
+		Server: s.Server,
+	}
+
+	// call internal hooks
+	switch req.Cmd {
+	case CmdConnected:
+		s.onSidConnected(sid)
+	case CmdClosed:
+		s.onSidClosed(sid)
+	}
+
+	// internal will not response
+	if req.Cmd != CmdConnected &&
+		req.Cmd != CmdClosed &&
+		req.Cmd != CmdHeartbeat {
+		defer func() {
+			ctx.Push(ctx.Response)
+		}()
+	}
+
+	routeHandlers, ok := s.routes[req.Cmd]
+	var handlers []HandlerFunc
+	if ok {
+		handlers = make([]HandlerFunc, 0, len(s.middleware)+len(routeHandlers))
+		handlers = append(handlers, s.middleware...)
+		handlers = append(handlers, routeHandlers...)
+	} else {
+		handlers = make([]HandlerFunc, 0, len(s.middleware)+1)
+		handlers = append(handlers, s.middleware...)
+		handlers = append(handlers, RouteNotFound)
+	}
+	ctx.handlers = handlers
+	ctx.handlerIndex = -1
+	return ctx
+}
+
+func (s *Srv) CallContext(ctx *Context) {
+	for !ctx.handlerAbort && ctx.handlerIndex < len(ctx.handlers) {
+		ctx.Next()
+	}
+}
+
 // 当有新的会话SID产生时触发，依赖内置命令 CmdConnected 实现
 func (s *Srv) onSidConnected(sid string) {}
 
@@ -103,54 +157,8 @@ func (s *Srv) receive() error {
 
 		// handler cmd
 		go func(sid string, req *Request) {
-			ctx := &Context{
-				Response: &Response{
-					Request: req,
-					Cmd:     req.Cmd,
-					Seqno:   req.Seqno,
-					Code:    -1,
-					Msg:     msgUnsupportCmd,
-					Data:    struct{}{},
-				},
-				SID:    sid,
-				Srv:    s,
-				Server: s.Server,
-			}
-
-			// call internal hooks
-			switch req.Cmd {
-			case CmdConnected:
-				s.onSidConnected(sid)
-			case CmdClosed:
-				s.onSidClosed(sid)
-			}
-
-			// internal will not response
-			if req.Cmd != CmdConnected &&
-				req.Cmd != CmdClosed &&
-				req.Cmd != CmdHeartbeat {
-				defer func() {
-					ctx.Push(ctx.Response)
-				}()
-			}
-
-			routeHandlers, ok := s.routes[req.Cmd]
-			var handlers []HandlerFunc
-			if ok {
-				handlers = make([]HandlerFunc, 0, len(s.middleware)+len(routeHandlers))
-				handlers = append(handlers, s.middleware...)
-				handlers = append(handlers, routeHandlers...)
-			} else {
-				handlers = make([]HandlerFunc, 0, len(s.middleware)+1)
-				handlers = append(handlers, s.middleware...)
-				handlers = append(handlers, RouteNotFound)
-			}
-			ctx.handlers = handlers
-			ctx.handlerIndex = -1
-
-			for !ctx.handlerAbort && ctx.handlerIndex < len(ctx.handlers) {
-				ctx.Next()
-			}
+			ctx := s.NewContext(sid, req)
+			s.CallContext(ctx)
 		}(sid, req)
 	}
 }

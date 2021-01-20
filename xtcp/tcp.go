@@ -128,16 +128,22 @@ func (t *TCP) newConn(sid string, netconn net.Conn) {
 		payloads, err := t.Config.MsgPkg.Parser(sid, buf)
 
 		for _, payload := range payloads {
-			r := &cmdsrv.Request{}
+
 			if len(payload) == 0 { // heartbeat
-				r.Cmd = cmdsrv.CmdHeartbeat
-				t.receive <- &reqMessage{data: r, sid: sid}
+				t.receive <- &reqMessage{data: &cmdsrv.Request{
+					Cmd: cmdsrv.CmdHeartbeat,
+				}, sid: sid}
 				continue
 			}
+			r := &requestData{}
 			if err = json.Unmarshal(payload, r); err != nil {
 				continue
 			}
-			t.receive <- &reqMessage{data: r, sid: sid}
+			t.receive <- &reqMessage{data: &cmdsrv.Request{
+				Cmd:     r.Cmd,
+				Seqno:   r.Seqno,
+				RawData: r.Data,
+			}, sid: sid}
 		}
 	}
 }

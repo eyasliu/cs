@@ -106,16 +106,22 @@ func (ws *WS) newConn(sid string, conn *websocket.Conn) {
 			log.Println(err)
 			return
 		}
-		r := &cmdsrv.Request{}
+
 		if len(payload) == 0 { // heartbeat
-			r.Cmd = cmdsrv.CmdHeartbeat
-			ws.receive <- &reqMessage{msgType: messageType, data: r, sid: sid}
+			ws.receive <- &reqMessage{msgType: messageType, data: &cmdsrv.Request{
+				Cmd: cmdsrv.CmdHeartbeat,
+			}, sid: sid}
 			continue
 		}
+		r := &requestData{}
 		if err = json.Unmarshal(payload, r); err != nil {
 			continue
 		}
-		ws.receive <- &reqMessage{msgType: messageType, data: r, sid: sid}
+		ws.receive <- &reqMessage{msgType: messageType, data: &cmdsrv.Request{
+			Cmd:     r.Cmd,
+			Seqno:   r.Seqno,
+			RawData: r.Data,
+		}, sid: sid}
 	}
 }
 

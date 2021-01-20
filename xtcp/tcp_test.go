@@ -55,17 +55,22 @@ func TestTcp(t *testing.T) {
 		t.Assert(err, nil)
 		srv.Use(cmdsrv.AccessLogger("MYSRV"))
 
-		srv.Handle("register", func(c *cmdsrv.Context) {
-			c.OK("login_success")
+		data := map[string]interface{}{
+			"cmd":   "register",
+			"seqno": "12345",
+			"data":  "asdfgh",
+		}
+		srv.Handle(data["cmd"].(string), func(c *cmdsrv.Context) {
+			c.OK(c.RawData)
 		})
 		go srv.Run()
 		time.Sleep(100 * time.Millisecond)
 
-		res, err := sendToTcp("127.0.0.1:5670", map[string]interface{}{
-			"cmd": "register",
-		})
+		res, err := sendToTcp("127.0.0.1:5670", data)
 
 		t.Assert(err, nil)
-		t.Assert(res["data"], "login_success")
+		t.Assert(res["cmd"], data["cmd"])
+		t.Assert(res["data"], data["data"])
+		t.Assert(res["seqno"], data["seqno"])
 	})
 }

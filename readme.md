@@ -102,7 +102,7 @@ import (
 func main() {
     ws := xwebsocket.New()
     http.Handler("/ws", ws.Handler)
-    srv := cmdsrv.New(ws)
+    srv := ws.Srv(ws)
 
     log.Fatal(http.ListenAndServe(":8080", nil))
 }

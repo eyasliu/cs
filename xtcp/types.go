@@ -1,10 +1,20 @@
 package xtcp
 
-import "github.com/eyasliu/cmdsrv"
+import (
+	"encoding/json"
+
+	"github.com/eyasliu/cmdsrv"
+)
 
 type reqMessage struct {
 	sid  string
 	data *cmdsrv.Request
+}
+
+type requestData struct {
+	Cmd   string          `json:"cmd"`   // message command, use for route
+	Seqno string          `json:"seqno"` // seq number,the request id
+	Data  json.RawMessage `json:"data"`  // response data
 }
 
 type responseData struct {

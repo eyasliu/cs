@@ -46,18 +46,23 @@ func TestWS(t *testing.T) {
 	srv := ws.Srv().Use(cmdsrv.AccessLogger("MYSRV")) // 打印请求响应日志
 
 	gtest.C(t, func(t *gtest.T) {
-		srv.Handle("register", func(c *cmdsrv.Context) {
-			c.OK("login_success")
+		data := map[string]interface{}{
+			"cmd":   "register",
+			"seqno": "12345",
+			"data":  "asdfgh",
+		}
+		srv.Handle(data["cmd"].(string), func(c *cmdsrv.Context) {
+			c.OK(c.RawData)
 		})
 		go srv.Run()
 		time.Sleep(100 * time.Millisecond)
 
-		res, err := sendToWs("ws://127.0.0.1:5679/ws", map[string]interface{}{
-			"cmd": "register",
-		})
+		res, err := sendToWs("ws://127.0.0.1:5679/ws", data)
 
 		t.Assert(err, nil)
-		t.Assert(res["data"], "login_success")
+		t.Assert(res["cmd"], data["cmd"])
+		t.Assert(res["data"], data["data"])
+		t.Assert(res["seqno"], data["seqno"])
 	})
 
 }

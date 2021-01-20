@@ -1,6 +1,9 @@
 package cmdsrv
 
-import "fmt"
+import (
+	"encoding/json"
+	"fmt"
+)
 
 type printLogger interface {
 	Debug(...interface{})
@@ -38,6 +41,17 @@ func AccessLogger(args ...interface{}) HandlerFunc {
 		}
 		logger.Debug(fmt.Sprintf("%s RECV CMD=%s SEQ=%s %s", name, c.Cmd, c.Seqno, string(c.RawData)))
 		c.Next()
-		logger.Debug(fmt.Sprintf("%s RESP CMD=%s SEQ=%s %v", name, c.Cmd, c.Seqno, c.Response.Data))
+		data := ""
+		switch c.Response.Data.(type) {
+
+		case string:
+			data = c.Response.Data.(string)
+		case []byte:
+			data = string(c.Response.Data.([]byte))
+		default:
+			bt, _ := json.Marshal(c.Response.Data)
+			data = string(bt)
+		}
+		logger.Debug(fmt.Sprintf("%s RESP CMD=%s SEQ=%s %v", name, c.Cmd, c.Seqno, data))
 	}
 }
