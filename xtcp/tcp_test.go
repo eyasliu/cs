@@ -2,6 +2,7 @@ package xtcp_test
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
 	"testing"
@@ -15,7 +16,7 @@ import (
 var prot = xtcp.DefaultPkgProto{}
 
 func sendToTcp(url string, r interface{}) (map[string]interface{}, error) {
-	c, _, err := net.Dial(url, nil)
+	c, err := net.Dial("tcp", url)
 
 	if err != nil {
 		return nil, err
@@ -23,34 +24,44 @@ func sendToTcp(url string, r interface{}) (map[string]interface{}, error) {
 	defer c.Close()
 	bt, _ := json.Marshal(r)
 	pkg, _ := prot.Packer(bt)
-	err = c.Send(bt)
+	_, err = c.Write(pkg)
 	if err != nil {
 		return nil, err
 	}
 
-	_, data, err := c.ReadMessage()
+	_buf := make([]byte, 1024)
+	buflen, err := c.Read(_buf)
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println(string(data))
+	data := _buf[:buflen]
+	datas, err := prot.Parser("1", data)
+	if err != nil {
+		return nil, err
+	}
+	if len(datas) == 0 {
+		return nil, errors.New("receive err")
+	}
+
+	fmt.Println(string(datas[0]))
 	res := map[string]interface{}{}
-	err = json.Unmarshal(data, &res)
+	err = json.Unmarshal(datas[0], &res)
 	return res, err
 }
 
 func TestTcp(t *testing.T) {
-	tcp := xtcp.New("127.0.0.1:5670")
-	go tcp.Run()
-
-	srv := tcp.Srv().Use(cmdsrv.AccessLogger("MYSRV"))
 	gtest.C(t, func(t *gtest.T) {
+		srv, err := xtcp.New("127.0.0.1:5670").Srv()
+		t.Assert(err, nil)
+		srv.Use(cmdsrv.AccessLogger("MYSRV"))
+
 		srv.Handle("register", func(c *cmdsrv.Context) {
 			c.OK("login_success")
 		})
 		go srv.Run()
-		time.Sleep(100 * time.Millisecond)
+		time.Sleep(1000 * time.Millisecond)
 
-		res, err := sendToTcp("ws://127.0.0.1:5679/ws", map[string]interface{}{
+		res, err := sendToTcp("127.0.0.1:5670", map[string]interface{}{
 			"cmd": "register",
 		})
 

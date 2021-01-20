@@ -46,28 +46,28 @@ func (c *Conn) Send(v ...*cmdsrv.Response) error {
 	return nil
 }
 
-func (c *Conn) Read() (*cmdsrv.Response, error) {
-	_buf := make([]byte, 1024)
-	buflen, err := conn.Conn.Read(_buf)
-	if err != nil {
-		return err
-	}
-	buf := _buf[:buflen]
-	body, err := c.server.Config.Parser(c.sid, buf)
-	if err != nil {
-		// 解析异常，断开连接
-		conn.Destroy()
-		break
-	}
-	for _, body := range body {
-		msg := &Message{
-			Data: body,
-			Conn: conn,
-		}
-		if conn.IsServer() {
-			conn.server.recChan <- msg
-		} else if conn.IsClient() {
-			conn.client.recChan <- msg
-		}
-	}
-}
+// func (c *Conn) Read() ([]*cmdsrv.Response, error) {
+// 	_buf := make([]byte, 1024)
+// 	buflen, err := conn.Conn.Read(_buf)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	buf := _buf[:buflen]
+// 	body, err := c.server.Config.Parser(c.sid, buf)
+// 	if err != nil {
+// 		// 解析异常，断开连接
+// 		conn.Destroy()
+// 		break
+// 	}
+// 	for _, body := range body {
+// 		msg := &Message{
+// 			Data: body,
+// 			Conn: conn,
+// 		}
+// 		if conn.IsServer() {
+// 			conn.server.recChan <- msg
+// 		} else if conn.IsClient() {
+// 			conn.client.recChan <- msg
+// 		}
+// 	}
+// }

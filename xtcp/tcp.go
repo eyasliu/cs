@@ -3,7 +3,7 @@ package xtcp
 import (
 	"encoding/json"
 	"errors"
-	"log"
+	"fmt"
 	"net"
 
 	"github.com/eyasliu/cmdsrv"
@@ -12,6 +12,7 @@ import (
 // TCP 适配器
 type TCP struct {
 	Config   *Config
+	listener net.Listener
 	session  map[string]*Conn
 	receive  chan *reqMessage
 	sidCount uint64
@@ -32,8 +33,13 @@ func New(addr string) *TCP {
 }
 
 // Srv 使用该适配器创建命令消息服务
-func (t *TCP) Srv() *cmdsrv.Srv {
-	return cmdsrv.New(t)
+func (t *TCP) Srv() (*cmdsrv.Srv, error) {
+	err := t.listen()
+	if err != nil {
+		return nil, err
+	}
+	go t.accept()
+	return cmdsrv.New(t), nil
 }
 
 // Read 实现 cmdsrv.ServerAdapter 接口，读取消息，每次返回一条，循环读取
@@ -68,12 +74,42 @@ func (t *TCP) GetAllSID() []string {
 	return sids
 }
 
+// Run 启动 TCP 服务器，监听连接请求
+func (t *TCP) Run() error {
+	err := t.listen()
+	if err != nil {
+		return err
+	}
+	t.accept()
+	return nil
+}
+
+func (t *TCP) listen() error {
+	listener, err := net.Listen(t.Config.Network, t.Config.Addr)
+	t.listener = listener
+	return err
+}
+
+func (t *TCP) accept() {
+	for {
+		conn, err := t.listener.Accept()
+		if err != nil {
+			continue
+		}
+		t.sidCount++
+
+		sid := fmt.Sprintf("%d", t.sidCount)
+		t.newConn(sid, conn)
+	}
+}
+
 // 初始化 tcp 连接
-func (t *TCP) newConn(sid string, conn net.Conn) {
-	t.session[sid] = &Conn{
-		Conn:   conn,
+func (t *TCP) newConn(sid string, netconn net.Conn) {
+	conn := &Conn{
+		Conn:   netconn,
 		server: t,
 	}
+	t.session[sid] = conn
 	t.receive <- &reqMessage{
 		data: &cmdsrv.Request{
 			Cmd: cmdsrv.CmdConnected,
@@ -81,21 +117,28 @@ func (t *TCP) newConn(sid string, conn net.Conn) {
 		sid: sid,
 	}
 	for {
-		messageType, payload, err := conn.Read()
+		_buf := make([]byte, 1024)
+		buflen, err := netconn.Read(_buf)
 		if err != nil {
-			log.Println(err)
+			// data err, close socket
+			t.destroyConn(sid)
 			return
 		}
-		r := &cmdsrv.Request{}
-		if len(payload) == 0 { // heartbeat
-			r.Cmd = cmdsrv.CmdHeartbeat
-			ws.receive <- &reqMessage{data: r, sid: sid}
-			continue
+		buf := _buf[:buflen]
+		payloads, err := t.Config.MsgPkg.Parser(sid, buf)
+
+		for _, payload := range payloads {
+			r := &cmdsrv.Request{}
+			if len(payload) == 0 { // heartbeat
+				r.Cmd = cmdsrv.CmdHeartbeat
+				t.receive <- &reqMessage{data: r, sid: sid}
+				continue
+			}
+			if err = json.Unmarshal(payload, r); err != nil {
+				continue
+			}
+			t.receive <- &reqMessage{data: r, sid: sid}
 		}
-		if err = json.Unmarshal(payload, r); err != nil {
-			continue
-		}
-		ws.receive <- &reqMessage{data: r, sid: sid}
 	}
 }
 
@@ -105,7 +148,7 @@ func (t *TCP) destroyConn(sid string) error {
 	if !ok {
 		return errors.New("conn is already close")
 	}
-	err := conn.Close()
+	err := conn.Conn.Close()
 	if err != nil {
 		return err
 	}
