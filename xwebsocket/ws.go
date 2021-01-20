@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"sync"
 
 	"github.com/eyasliu/cmdsrv"
 
@@ -14,10 +15,11 @@ import (
 
 // WS websocket 适配器
 type WS struct {
-	upgrader websocket.Upgrader
-	session  map[string]*Conn
-	receive  chan *reqMessage
-	sidCount uint64
+	upgrader  websocket.Upgrader
+	session   map[string]*Conn
+	sessionMu sync.RWMutex
+	receive   chan *reqMessage
+	sidCount  uint64
 }
 
 var _ cmdsrv.ServerAdapter = &WS{}
@@ -94,9 +96,11 @@ func (ws *WS) GetAllSID() []string {
 
 // 初始化 ws 连接
 func (ws *WS) newConn(sid string, conn *websocket.Conn) {
+	ws.sessionMu.Lock()
 	ws.session[sid] = &Conn{
 		Conn: conn,
 	}
+	ws.sessionMu.Unlock()
 	ws.receive <- &reqMessage{msgType: websocket.TextMessage, data: &cmdsrv.Request{
 		Cmd: cmdsrv.CmdConnected,
 	}, sid: sid}
@@ -138,6 +142,8 @@ func (ws *WS) destroyConn(sid string) error {
 	ws.receive <- &reqMessage{msgType: websocket.TextMessage, data: &cmdsrv.Request{
 		Cmd: cmdsrv.CmdClosed,
 	}, sid: sid}
+	ws.sessionMu.Lock()
 	delete(ws.session, sid)
+	ws.sessionMu.Unlock()
 	return nil
 }
