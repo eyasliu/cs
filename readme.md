@@ -92,7 +92,7 @@ func main() {
 
 ### 适配器
 
-用在 websocket
+[用在 websocket](./xwebsocket)
 
 ```go
 import (
@@ -110,7 +110,7 @@ func main() {
 }
 ```
 
-用在 TCP，使用内置默认协议
+[用在 TCP](./xtcp)，使用内置默认协议
 
 ```go
 import (
@@ -128,7 +128,7 @@ func main() {
   srv.Run() // 阻塞运行
 }
 ```
-用在 HTTP
+[用在 HTTP](./xhttp)
 
 ```go
 import (
