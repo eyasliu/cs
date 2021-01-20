@@ -169,3 +169,7 @@ $ curl -XPOST -H"Content-Type:application/json" --data '{"cmd":"register", "data
 实现方案：
 
 在 websocket 和 tcp 中，每个连接都抽象成一个字符串 `SID`, 即 Session ID, cmdsrv 只负责处理消息，不处理连接的任何状态，与连接和状态相关的操作全都以 interface 定义好，给各种工具去实现
+
+## API
+
+[GoDoc]()
