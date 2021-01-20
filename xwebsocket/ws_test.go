@@ -3,7 +3,6 @@ package xwebsocket_test
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"log"
 	"net/http"
 	"testing"
@@ -32,7 +31,7 @@ func sendToWs(url string, r interface{}) (map[string]interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println(string(data))
+	// fmt.Println(string(data))
 	res := map[string]interface{}{}
 	err = json.Unmarshal(data, &res)
 	return res, err
@@ -40,7 +39,9 @@ func sendToWs(url string, r interface{}) (map[string]interface{}, error) {
 
 func TestWS(t *testing.T) {
 	ws := xwebsocket.New()
-	http.Handle("/ws", ws)
+	http.Handle("/ws1", ws)
+	http.HandleFunc("/ws2", ws.Handler)
+
 	go http.ListenAndServe(":5679", nil)
 
 	srv := ws.Srv().Use(cmdsrv.AccessLogger("MYSRV")) // 打印请求响应日志
@@ -54,10 +55,18 @@ func TestWS(t *testing.T) {
 		srv.Handle(data["cmd"].(string), func(c *cmdsrv.Context) {
 			c.OK(c.RawData)
 		})
+
 		go srv.Run()
 		time.Sleep(100 * time.Millisecond)
 
-		res, err := sendToWs("ws://127.0.0.1:5679/ws", data)
+		res, err := sendToWs("ws://127.0.0.1:5679/ws1", data)
+
+		t.Assert(err, nil)
+		t.Assert(res["cmd"], data["cmd"])
+		t.Assert(res["data"], data["data"])
+		t.Assert(res["seqno"], data["seqno"])
+
+		res, err = sendToWs("ws://127.0.0.1:5679/ws2", data)
 
 		t.Assert(err, nil)
 		t.Assert(res["cmd"], data["cmd"])

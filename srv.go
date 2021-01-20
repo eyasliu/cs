@@ -105,15 +105,6 @@ func (s *Srv) NewContext(sid string, req *Request) *Context {
 		s.onSidClosed(sid)
 	}
 
-	// internal will not response
-	if req.Cmd != CmdConnected &&
-		req.Cmd != CmdClosed &&
-		req.Cmd != CmdHeartbeat {
-		defer func() {
-			ctx.Push(ctx.Response)
-		}()
-	}
-
 	routeHandlers, ok := s.routes[req.Cmd]
 	var handlers []HandlerFunc
 	if ok {
@@ -158,6 +149,15 @@ func (s *Srv) receive() error {
 		// handler cmd
 		go func(sid string, req *Request) {
 			ctx := s.NewContext(sid, req)
+
+			// internal will not response
+			if req.Cmd != CmdConnected &&
+				req.Cmd != CmdClosed &&
+				req.Cmd != CmdHeartbeat {
+				defer func() {
+					ctx.Push(ctx.Response)
+				}()
+			}
 			s.CallContext(ctx)
 		}(sid, req)
 	}

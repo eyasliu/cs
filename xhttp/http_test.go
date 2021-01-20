@@ -59,6 +59,13 @@ func TestHttpSrv(t *testing.T) {
 		t.Assert(res["cmd"], data["cmd"])
 		t.Assert(res["data"], data["data"])
 		t.Assert(res["seqno"], data["seqno"])
+
+		res, err = sendToHttp("http://127.0.0.1:5679/cmd2", data)
+
+		t.Assert(err, nil)
+		t.Assert(res["cmd"], data["cmd"])
+		t.Assert(res["data"], data["data"])
+		t.Assert(res["seqno"], data["seqno"])
 	})
 
 }
