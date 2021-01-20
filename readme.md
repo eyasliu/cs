@@ -1,6 +1,6 @@
 # Cmd Srv
 
-![https://travis-ci.com/eyasliu/cmdsrv.svg](https://travis-ci.com/github/eyasliu/cmdsrv)
+![Build Status](https://travis-ci.com/eyasliu/cmdsrv.svg)
 
 开箱即用的基于命令的消息处理框架，让 websocket 和 tcp 开发就像 http 那样简单
 
@@ -97,7 +97,6 @@ func main() {
 ```go
 import (
     "net/http"
-    "github.com/eyasliu/cmdsrv"
     "github.com/eyasliu/cmdsrv/xwebsocket"
 )
 
@@ -111,22 +110,22 @@ func main() {
 }
 ```
 
-用在 TCP
+用在 TCP，使用内置默认协议
 
 ```go
 import (
     "net"
-    "github.com/eyasliu/cmdsrv"
     "github.com/eyasliu/cmdsrv/xtcp"
 )
 
 func main() {
-    server := xtcp.New(&tcp.Config{})
-    srv := cmdsrv.New(server)
+    server := xtcp.New("127.0.0.1:8520")
+		srv, err := server.Srv()
+		if err != nil {
+			panic(err)
+		}
 
-    conn, err := net.Dial("tcp", ":8000")
-    server2 := xtcp.NewByConn(conn)
-    srv2 := cmdsrv.New(conn)
+		srv.Run() // 阻塞运行
 }
 ```
 用在 HTTP
@@ -140,8 +139,10 @@ import (
 
 func main() {
     server := xhttp.New()
-    http.Handler("/cmd", server.Handler)
-    srv := cmdsrv.New(ws)
+    http.Handle("/cmd1", server)
+    http.HandleFunc("/cmd1", server.Handler)
+		srv := server.Srv()
+		// http 不需要 srv.Run()
 
     log.Fatal(http.ListenAndServe(":8080", nil))
 }
