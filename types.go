@@ -2,7 +2,6 @@ package cmdsrv
 
 import (
 	"encoding/json"
-	"fmt"
 )
 
 // 内置命令
@@ -36,30 +35,6 @@ type Response struct {
 	Code     int         // response status code
 	Msg      string      // response status message text
 	Data     interface{} // response data
-}
-
-func (r *Response) MarshalJSON() ([]byte, error) {
-	var data json.RawMessage
-	var err error
-	switch r.Data.(type) {
-	case string:
-		data = json.RawMessage(r.Data.(string))
-	case []byte:
-		data = json.RawMessage(r.Data.([]byte))
-	default:
-		data, err = json.Marshal(r.Data)
-		if err != nil {
-			return nil, err
-		}
-	}
-	s := fmt.Sprintf(`{"cmd":"%s","seqno":"%s","code":%d,"msg":"%s","data":%s}`,
-		r.Cmd,
-		r.Seqno,
-		r.Code,
-		r.Msg,
-		string(data),
-	)
-	return []byte(s), nil
 }
 
 // ServerAdapter defined integer to srv server

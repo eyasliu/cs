@@ -1,0 +1,26 @@
+language: go
+
+go:
+  - "1.11.x"
+  - "1.12.x"
+  - "1.13.x"
+  - "1.14.x"
+  - "1.15.x"
+
+branches:
+  only:
+  - master
+
+env:
+  - GO111MODULE=on
+
+before_script:
+- find . -name "*.go" | xargs gofmt -w
+- git diff --name-only --exit-code || exit 1
+
+script:
+- GOARCH=386 go test -v ./... || exit 1
+- GOARCH=amd64 go test -v ./... -race -coverprofile=coverage.txt -covermode=atomic
+
+after_success:
+- bash <(curl -s https://codecov.io/bash)

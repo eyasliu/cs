@@ -82,6 +82,8 @@ func (s *Srv) SetState(sid, key string, val interface{}) {
 	s.state.Set(sid, key, val)
 }
 
+// NewContext 根据请求消息实例化上下文
+// 应该在实现 adapter 时才有用
 func (s *Srv) NewContext(sid string, req *Request) *Context {
 	ctx := &Context{
 		Response: &Response{
@@ -121,6 +123,8 @@ func (s *Srv) NewContext(sid string, req *Request) *Context {
 	return ctx
 }
 
+// CallContext 调用上下文，触发上下文中间件
+// 应该在实现 adapter 时才有用
 func (s *Srv) CallContext(ctx *Context) {
 	for !ctx.handlerAbort && ctx.handlerIndex < len(ctx.handlers) {
 		ctx.Next()

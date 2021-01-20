@@ -76,7 +76,7 @@ func TestWS(t *testing.T) {
 
 }
 
-func ExampleFull() {
+func ExampleNew() {
 	// 初始化 websocket
 	ws := xwebsocket.New()
 	http.Handle("/ws", ws)
