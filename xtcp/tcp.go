@@ -18,13 +18,40 @@ type TCP struct {
 	sidCount uint64
 }
 
-// New 创建 TCP 适配器
-func New(addr string) *TCP {
-	conf := &Config{
-		Addr:    addr,
-		Network: "tcp",
-		MsgPkg:  defaultPkg,
+// New 创建 TCP 适配器，必需指定地址或者配置，使用默认的私有协议解析数据包
+// 默认私有协议包结构: 4byte标识数据长度 + 任意byte 数据
+//
+// 可使用 string 使用 tcp 网络类型指定监听的地址
+// xtcp.New("127.0.0.1:8520")
+//
+// 使用配置对象配置tcp服务，定义网络和数据包私有协议
+//
+// xtcp.New(&xtcp.Config{
+// 	  Addr: "127.0.0.1:8520",
+// 	  Network: "tcpv6",
+// 	  MsgPkg: &yourPrivateProtocol{}, //
+// })
+//
+// xtcp.New(&xtcp.Config{
+// 	  Addr: "127.0.0.1:8520",
+// 	  Network: "tcpv6",
+// 	  Packer: func([]byte) ([]byte, error) {},
+// 	  Parser(string, []byte) ([][]byte, error),
+// })
+func New(v interface{}) *TCP {
+	var conf *Config
+	if _conf, ok := v.(*Config); ok {
+		conf = _conf
+	} else if addr, ok := v.(string); ok {
+		conf = &Config{
+			Addr:    addr,
+			Network: "tcp",
+		}
 	}
+	if conf.MsgPkg == nil {
+		conf.MsgPkg = &DefaultPkgProto{}
+	}
+
 	return &TCP{
 		Config:  conf,
 		session: map[string]*Conn{},

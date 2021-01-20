@@ -12,8 +12,6 @@ type DefaultPkgProto struct {
 	PoolBuf map[string][]byte
 }
 
-var defaultPkg = &DefaultPkgProto{PoolBuf: make(map[string][]byte)}
-
 // Packer 封包，将数据区域包装成私有协议数据包
 func (*DefaultPkgProto) Packer(data []byte) ([]byte, error) {
 	bodyLen := uint32(len(data))
