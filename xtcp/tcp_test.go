@@ -59,7 +59,7 @@ func TestTcp(t *testing.T) {
 			c.OK("login_success")
 		})
 		go srv.Run()
-		time.Sleep(1000 * time.Millisecond)
+		time.Sleep(100 * time.Millisecond)
 
 		res, err := sendToTcp("127.0.0.1:5670", map[string]interface{}{
 			"cmd": "register",
