@@ -10,82 +10,82 @@
 ```go
 package main
 import (
-    "net/http"
-    "github.com/eyasliu/cmdsrv"
-    "github.com/eyasliu/cmdsrv/xwebsocket"
+  "net/http"
+  "github.com/eyasliu/cmdsrv"
+  "github.com/eyasliu/cmdsrv/xwebsocket"
 )
 
 func main() {
-	// 初始化 websocket
-	ws := xwebsocket.New()
-	http.Handle("/ws", ws)
+  // 初始化 websocket
+  ws := xwebsocket.New()
+  http.Handle("/ws", ws)
 
-	srv := ws.Srv(ws)
-	srv.Use(cmdsrv.AccessLogger("MYSRV")). // 打印请求响应日志
-		Use(cmdsrv.Recover())             // 统一错误处理，消化 panic 错误
+  srv := ws.Srv()
+  srv.Use(cmdsrv.AccessLogger("MYSRV")). // 打印请求响应日志
+            Use(cmdsrv.Recover()) // 统一错误处理，消化 panic 错误
 
-	srv.Handle("register", func(c *cmdsrv.Context) {
-		// 定义请求数据
-		var body struct {
-			UID  int    `p:"uid" v:"required"`
-			Name string `p:"name" v:"required|min:4#必需指定名称|名称长度必需大于4位"`
-		}
-		// 解析请求数据
-		if err := c.Parse(&body); err != nil {
-			c.Err(err, 401)
-			return
-		}
-		// 设置会话状态数据
-		c.Set("uid", body.UID)
-		c.Set("name", body.Name)
+  srv.Handle("register", func(c *cmdsrv.Context) {
+    // 定义请求数据
+    var body struct {
+      UID  int    `p:"uid" v:"required"`
+      Name string `p:"name" v:"required|min:4#必需指定名称|名称长度必需大于4位"`
+    }
+    // 解析请求数据
+    if err := c.Parse(&body); err != nil {
+      c.Err(err, 401)
+      return
+    }
+    // 设置会话状态数据
+    c.Set("uid", body.UID)
+    c.Set("name", body.Name)
 
-		// 响应消息
-		c.OK(map[string]interface{}{
-			"timestamp": time.Now().Unix(),
-		})
+    // 响应消息
+    c.OK(map[string]interface{}{
+      "timestamp": time.Now().Unix(),
+    })
 
-		// 给所有连接广播消息
-		c.Broadcast(&cmdsrv.Response{
-			Cmd:  "someone_online",
-			Data: body,
-		})
+    // 给所有连接广播消息
+    c.Broadcast(&cmdsrv.Response{
+      Cmd:  "someone_online",
+      Data: body,
+    })
 
-		// 往当前连接主动推送消息
-		c.Push(&cmdsrv.Response{
-			Cmd:  "welcome",
-			Data: "welcome to register my server",
-		})
+    // 往当前连接主动推送消息
+    c.Push(&cmdsrv.Response{
+      Cmd:  "welcome",
+      Data: "welcome to register my server",
+    })
 
-		// 遍历所有在线会话，获取其他会话的状态，并往指定会话推送消息
-		for _, sid := range c.GetAllSID() {
-			if c.Server.GetState(sid, "uid") != nil {
-				c.Srv.Push(sid, &cmdsrv.Response{
-					Cmd:  "firend_online",
-					Data: "your firend is online",
-				})
-			}
-		}
-	})
+    // 遍历所有在线会话，获取其他会话的状态，并往指定会话推送消息
+    for _, sid := range c.GetAllSID() {
+      if c.Srv.GetState(sid, "uid") != nil {
+        c.Srv.Push(sid, &cmdsrv.Response{
+          Cmd:  "firend_online",
+          Data: "your firend is online",
+        })
+      }
+    }
+  })
 
-	// 分组
-	group := srv.Group(func(c *cmdsrv.Context) {
-		// 过滤指定请求
-		if _, ok := c.Get("uid").(int); !ok {
-			c.Err(errors.New("unregister session"), 101)
-			return
-		}
-		c.Next()
-	})
+  // 分组
+  group := srv.Group(func(c *cmdsrv.Context) {
+    // 过滤指定请求
+    if _, ok := c.Get("uid").(int); !ok {
+      c.Err(errors.New("unregister session"), 101)
+      return
+    }
+    c.Next()
+  })
 
-	group.Handle("userinfo", func(c *cmdsrv.Context) {
-		uid := c.Get("uid").(int) // 中间件已处理过，可大胆断言
-		c.OK(map[string]interface{}{
-			"uid": uid,
-		})
-	})
-	go srv.Run()
+  group.Handle("userinfo", func(c *cmdsrv.Context) {
+    uid := c.Get("uid").(int) // 中间件已处理过，可大胆断言
+    c.OK(map[string]interface{}{
+      "uid": uid,
+    })
+  })
+  go srv.Run()
 
-	log.Fatal(http.ListenAndServe(":8080", nil))
+  log.Fatal(http.ListenAndServe(":8080", nil))
 }
 ```
 
@@ -96,17 +96,17 @@ func main() {
 
 ```go
 import (
-    "net/http"
-    "github.com/eyasliu/cmdsrv/xwebsocket"
+  "net/http"
+  "github.com/eyasliu/cmdsrv/xwebsocket"
 )
 
 func main() {
-    ws := xwebsocket.New()
-    http.Handler("/ws", ws.Handler)
-		srv := ws.Srv(ws)
-		go srv.Run()
+  ws := xwebsocket.New()
+  http.Handler("/ws", ws.Handler)
+  srv := ws.Srv(ws)
+  go srv.Run()
 
-    log.Fatal(http.ListenAndServe(":8080", nil))
+  log.Fatal(http.ListenAndServe(":8080", nil))
 }
 ```
 
@@ -114,37 +114,37 @@ func main() {
 
 ```go
 import (
-    "net"
-    "github.com/eyasliu/cmdsrv/xtcp"
+  "net"
+  "github.com/eyasliu/cmdsrv/xtcp"
 )
 
 func main() {
-    server := xtcp.New("127.0.0.1:8520")
-		srv, err := server.Srv()
-		if err != nil {
-			panic(err)
-		}
+  server := xtcp.New("127.0.0.1:8520")
+  srv, err := server.Srv()
+  if err != nil {
+    panic(err)
+  }
 
-		srv.Run() // 阻塞运行
+  srv.Run() // 阻塞运行
 }
 ```
 用在 HTTP
 
 ```go
 import (
-    "net/http"
-    "github.com/eyasliu/cmdsrv"
-    "github.com/eyasliu/cmdsrv/xhttp"
+  "net/http"
+  "github.com/eyasliu/cmdsrv"
+  "github.com/eyasliu/cmdsrv/xhttp"
 )
 
 func main() {
-    server := xhttp.New()
-    http.Handle("/cmd1", server)
-    http.HandleFunc("/cmd1", server.Handler)
-		srv := server.Srv()
-		// http 不需要 srv.Run()
+  server := xhttp.New()
+  http.Handle("/cmd1", server)
+  http.HandleFunc("/cmd1", server.Handler)
+  srv := server.Srv()
+	// http 不需要 srv.Run()
 
-    log.Fatal(http.ListenAndServe(":8080", nil))
+  log.Fatal(http.ListenAndServe(":8080", nil))
 }
 ```
 

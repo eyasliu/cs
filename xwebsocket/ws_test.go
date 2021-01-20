@@ -81,10 +81,9 @@ func ExampleNew() {
 	ws := xwebsocket.New()
 	http.Handle("/ws", ws)
 
-	srv := cmdsrv.New(ws)
-
-	srv.Use(cmdsrv.AccessLogger("MYSRV")) // 打印请求响应日志
-	srv.Use(cmdsrv.Recover())             // 统一错误处理，消化 panic 错误
+	srv := ws.Srv()
+	srv.Use(cmdsrv.AccessLogger("MYSRV")). // 打印请求响应日志
+						Use(cmdsrv.Recover()) // 统一错误处理，消化 panic 错误
 
 	srv.Handle("register", func(c *cmdsrv.Context) {
 		// 定义请求数据
@@ -131,7 +130,7 @@ func ExampleNew() {
 
 	// 分组
 	group := srv.Group(func(c *cmdsrv.Context) {
-		// 过滤指定会话
+		// 过滤指定请求
 		if _, ok := c.Get("uid").(int); !ok {
 			c.Err(errors.New("unregister session"), 101)
 			return
@@ -145,6 +144,7 @@ func ExampleNew() {
 			"uid": uid,
 		})
 	})
+	go srv.Run()
 
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
