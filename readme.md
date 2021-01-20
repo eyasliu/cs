@@ -20,7 +20,7 @@ func main() {
 	ws := xwebsocket.New()
 	http.Handle("/ws", ws)
 
-	srv := ws.New(ws)
+	srv := ws.Srv(ws)
 	srv.Use(cmdsrv.AccessLogger("MYSRV")). // 打印请求响应日志
 		Use(cmdsrv.Recover())             // 统一错误处理，消化 panic 错误
 
