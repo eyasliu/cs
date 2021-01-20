@@ -172,4 +172,4 @@ $ curl -XPOST -H"Content-Type:application/json" --data '{"cmd":"register", "data
 
 ## API
 
-[GoDoc]()
+[GoDoc](https://pkg.go.dev/github.com/eyasliu/cmdsrv)
