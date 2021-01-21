@@ -3,6 +3,7 @@ package xtcp
 import (
 	"bytes"
 	"encoding/binary"
+	"sync"
 )
 
 // DefaultPkgProto 一个默认的私有协议实现
@@ -10,6 +11,7 @@ import (
 // 4字节(自定义数据长度) + 任意字节(json字符串数据)
 type DefaultPkgProto struct {
 	PoolBuf map[string][]byte
+	poolMu  sync.RWMutex
 }
 
 // Packer 封包，将数据区域包装成私有协议数据包
@@ -27,10 +29,14 @@ func (p *DefaultPkgProto) Parser(sid string, bt []byte) ([][]byte, error) {
 	if p.PoolBuf == nil {
 		p.PoolBuf = make(map[string][]byte)
 	}
+	p.poolMu.RLock()
 	preBuf, ok := p.PoolBuf[sid]
+	p.poolMu.RUnlock()
 	if !ok {
 		preBuf = make([]byte, 0)
+		p.poolMu.Lock()
 		p.PoolBuf[sid] = preBuf
+		p.poolMu.Unlock()
 	}
 
 	buf := bytesCombine(preBuf, bt)
@@ -49,7 +55,9 @@ func (p *DefaultPkgProto) Parser(sid string, bt []byte) ([][]byte, error) {
 		buf = buf[4+bodyLen:]
 		datas = append(datas, pack)
 	}
+	p.poolMu.Lock()
 	p.PoolBuf[sid] = buf
+	p.poolMu.Unlock()
 
 	return datas, nil
 

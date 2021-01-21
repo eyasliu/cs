@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"sync/atomic"
 
 	"github.com/eyasliu/cmdsrv"
 )
@@ -30,8 +31,8 @@ func (h *HTTP) Handler(w http.ResponseWriter, req *http.Request) {
 	cookie, err := req.Cookie(h.sidKey)
 	var sid string
 	if err != nil || cookie == nil {
-		h.sidCount++
-		sid := fmt.Sprintf("%d", h.sidCount)
+		atomic.AddUint64(&h.sidCount, 1)
+		sid := fmt.Sprintf("http.%d", h.sidCount)
 		cookie = &http.Cookie{
 			Name:     h.sidKey,
 			Value:    sid,

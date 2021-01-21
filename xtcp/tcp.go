@@ -5,17 +5,20 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"sync"
+	"sync/atomic"
 
 	"github.com/eyasliu/cmdsrv"
 )
 
 // TCP 适配器
 type TCP struct {
-	Config   *Config
-	listener net.Listener
-	session  map[string]*Conn
-	receive  chan *reqMessage
-	sidCount uint64
+	Config    *Config
+	listener  net.Listener
+	session   map[string]*Conn
+	sessionMu sync.RWMutex
+	receive   chan *reqMessage
+	sidCount  uint64
 }
 
 // New 创建 TCP 适配器，必需指定地址或者配置，使用默认的私有协议解析数据包
@@ -95,9 +98,11 @@ func (t *TCP) Close(sid string) error {
 // GetAllSID 实现 cmdsrv.ServerAdapter 接口，获取当前服务所有SID，用于遍历连接
 func (t *TCP) GetAllSID() []string {
 	sids := make([]string, len(t.session))
+	t.sessionMu.RLock()
 	for sid := range t.session {
 		sids = append(sids, sid)
 	}
+	t.sessionMu.RUnlock()
 	return sids
 }
 
@@ -123,9 +128,9 @@ func (t *TCP) accept() {
 		if err != nil {
 			continue
 		}
-		t.sidCount++
+		atomic.AddUint64(&t.sidCount, 1)
 
-		sid := fmt.Sprintf("%d", t.sidCount)
+		sid := fmt.Sprintf("tcp.%d", t.sidCount)
 		t.newConn(sid, conn)
 	}
 }
@@ -136,7 +141,9 @@ func (t *TCP) newConn(sid string, netconn net.Conn) {
 		Conn:   netconn,
 		server: t,
 	}
+	t.sessionMu.Lock()
 	t.session[sid] = conn
+	t.sessionMu.Unlock()
 	t.receive <- &reqMessage{
 		data: &cmdsrv.Request{
 			Cmd: cmdsrv.CmdConnected,
@@ -177,7 +184,9 @@ func (t *TCP) newConn(sid string, netconn net.Conn) {
 
 // 销毁指定连接
 func (t *TCP) destroyConn(sid string) error {
+	t.sessionMu.RLock()
 	conn, ok := t.session[sid]
+	t.sessionMu.RUnlock()
 	if !ok {
 		return errors.New("conn is already close")
 	}
@@ -191,6 +200,8 @@ func (t *TCP) destroyConn(sid string) error {
 		},
 		sid: sid,
 	}
+	t.sessionMu.Lock()
 	delete(t.session, sid)
+	t.sessionMu.Unlock()
 	return nil
 }
