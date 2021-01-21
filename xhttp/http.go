@@ -53,7 +53,7 @@ func (h *HTTP) Handler(w http.ResponseWriter, req *http.Request) {
 		if err != nil {
 			respData.Msg = err.Error()
 		}
-		ctx := h.srv.NewContext(sid, &cmdsrv.Request{
+		ctx := h.srv.NewContext(h, sid, &cmdsrv.Request{
 			Cmd:     reqData.Cmd,
 			Seqno:   reqData.Seqno,
 			RawData: reqData.Data,

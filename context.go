@@ -37,6 +37,7 @@ func (c *Context) Next() {
 }
 
 // Abort 中断更里层的中间件调用
+// 该方法应该只用在中间件函数使用
 func (c *Context) Abort() {
 	c.handlerAbort = true
 }
@@ -136,16 +137,21 @@ func (c *Context) Resp(code int, msg string, data ...interface{}) {
 
 // Push 往当前会话推送消息
 func (c *Context) Push(data *Response) error {
-	return c.Srv.Push(c.SID, data)
+	return c.Srv.PushServer(c.Server, c.SID, data)
 }
 
 // Close 关闭当前会话连接
 func (c *Context) Close() error {
-	return c.Srv.Close(c.SID)
+	return c.Srv.CloseByServer(c.Server, c.SID)
 }
 
 // GetAllSID 获取目前生效的所有会话ID
 func (c *Context) GetAllSID() []string {
+	return c.Srv.GetAllSID()
+}
+
+// GetServerAllSID 获取当前适配器中生效的所有会话ID
+func (c *Context) GetServerAllSID() []string {
 	return c.Server.GetAllSID()
 }
 
