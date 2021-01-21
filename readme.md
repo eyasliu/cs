@@ -1,6 +1,9 @@
 # Cmd Srv
 
-![Build Status](https://travis-ci.com/eyasliu/cmdsrv.svg)
+[![Build Status](https://travis-ci.com/eyasliu/cmdsrv.svg)](https://travis-ci.com/eyasliu/cmdsrv)
+[![Go Doc](https://godoc.org/github.com/eyasliu/cmdsrv?status.svg)](https://godoc.org/github.com/eyasliu/cmdsrv)
+[![Code Coverage](https://codecov.io/gh/eyasliu/cmdsrv/branch/master/graph/badge.svg)](https://codecov.io/gh/eyasliu/cmdsrv/branch/master)
+[![License](https://img.shields.io/github/license/eyasliu/cmdsrv.svg?style=flat)](https://github.com/eyasliu/cmdsrv)
 
 开箱即用的基于命令的消息处理框架，让 websocket 和 tcp 开发就像 http 那样简单
 
