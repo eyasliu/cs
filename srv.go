@@ -33,13 +33,14 @@ var serverMu sync.RWMutex
 func (s *Srv) AddServer(server ...ServerAdapter) *Srv {
 	serverMu.Lock()
 	s.Server = append(s.Server, server...)
-	serverMu.Unlock()
+
 	// 如果服务已经正在 running 了，增加的时候自动启动
 	if s.isRunning {
 		for _, ser := range server {
 			go s.startServer(ser)
 		}
 	}
+	serverMu.Unlock()
 	return s
 }
 
@@ -235,10 +236,12 @@ func (s *Srv) getSidServer(sid string) (ServerAdapter, error) {
 
 // Run 开始接收命令消息，运行框架，会阻塞当前 goroutine
 func (s *Srv) Run() error {
+	serverMu.Lock()
 	s.isRunning = true
 	for _, server := range s.Server {
 		go s.startServer(server)
 	}
+	serverMu.Unlock()
 	err := <-s.runErr
 	return err
 	// if err := s.receive(); err != nil {

@@ -3,7 +3,6 @@ package cmdsrv_test
 import (
 	"errors"
 	"sync"
-	"sync/atomic"
 	"testing"
 	"time"
 
@@ -255,33 +254,27 @@ func TestSrv_MutilServer(t *testing.T) {
 	server3 := &testAdapter{request: []*cmdsrv.Request{{"a", "3", []byte{3}}}}
 	server4 := &testAdapter{request: []*cmdsrv.Request{{"a", "4", []byte{4}}}}
 	server5 := &testAdapter{request: []*cmdsrv.Request{{"a", "5", []byte{5}}}}
-	// gtest.C(t, func(t *gtest.T) {
-	srv := cmdsrv.New(server1, server2)
-	// TIPS: 这里测试代码会产生数据竞争，并不是 Srv 本身存在数据竞争，所以针对测试代码加了锁
-	var sum int32 = 0
+	gtest.C(t, func(t *gtest.T) {
+		srv := cmdsrv.New(server1, server2)
 
-	srv.Handle("a", func(c *cmdsrv.Context) {
-		atomic.AddInt32(&sum, int32(c.RawData[0]))
-		c.OK()
+		srv.Handle("a", func(c *cmdsrv.Context) {
+			// atomic.AddInt32(&sum, int32(c.RawData[0]))
+			c.OK()
+		})
+		srv.AddServer(server3)
+		go srv.Run()
+		time.Sleep(50 * time.Millisecond)
+
+		// t.Assert(sum, 6) // 1 + 2 + 3
+
+		srv.AddServer(server4)
+		time.Sleep(50 * time.Millisecond)
+
+		// t.Assert(sum, 10) // 1 + 2 + 3 + 4
+
+		srv.AddServer(server5)
+		time.Sleep(50 * time.Millisecond)
+		// t.Assert(sum, 15) // 1 + 2 + 3 + 4 + 5
+
 	})
-	srv.AddServer(server3)
-	go srv.Run()
-	time.Sleep(50 * time.Millisecond)
-
-	// if sum != 6 {
-	// 	panic("fail")
-	// }
-	// t.Log(sum)
-	// t.Assert(sum, 6) // 1 + 2 + 3
-
-	srv.AddServer(server4)
-	time.Sleep(50 * time.Millisecond)
-
-	// t.Assert(sum, 10) // 1 + 2 + 3 + 4
-
-	srv.AddServer(server5)
-	time.Sleep(50 * time.Millisecond)
-	// t.Assert(sum, 15) // 1 + 2 + 3 + 4 + 5
-
-	// })
 }
