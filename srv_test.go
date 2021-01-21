@@ -2,6 +2,7 @@ package cmdsrv_test
 
 import (
 	"errors"
+	"fmt"
 	"sync"
 	"testing"
 	"time"
@@ -11,6 +12,7 @@ import (
 )
 
 type testAdapter struct {
+	sid      string
 	request  []*cmdsrv.Request
 	response []*cmdsrv.Response
 	state    map[string]interface{}
@@ -21,7 +23,7 @@ func (a *testAdapter) Read() (string, *cmdsrv.Request, error) {
 	if len(a.request) > 0 {
 		m := a.request[0]
 		a.request = a.request[1:len(a.request)]
-		return "1", m, nil
+		return a.sid, m, nil
 	}
 	return "", nil, errors.New("req empty")
 }
@@ -44,7 +46,11 @@ func (a *testAdapter) SetState(sid, key string, v interface{}) {
 	a.stateMu.Unlock()
 }
 func (a *testAdapter) GetAllSID() []string {
-	return []string{"1"}
+	return []string{a.sid}
+}
+
+func (a *testAdapter) Debug(v ...interface{}) {
+	fmt.Println(v...)
 }
 
 func TestSrv_MiddlewareCall(t *testing.T) {
@@ -58,6 +64,10 @@ func TestSrv_MiddlewareCall(t *testing.T) {
 	})
 
 	gtest.C(t, func(t *gtest.T) {
+		srv.Use(cmdsrv.AccessLogger())
+		srv.Use(cmdsrv.AccessLogger(&testAdapter{}, struct{}{}, "SRVNAME"))
+		srv.Use(cmdsrv.Heartbeat(10 * time.Millisecond))
+		srv.Use(cmdsrv.Recover())
 		srv.Use(func(c *cmdsrv.Context) {
 			c.Seqno = "a"
 			c.Next()
@@ -110,6 +120,7 @@ func TestSrv_MiddlewareCall(t *testing.T) {
 		srvG3.Handle("d", func(c *cmdsrv.Context) {
 			t.Assert(c.Seqno, "acei")
 			t.Assert(c.Cmd, "d")
+			panic("test panic recover")
 		})
 
 		srv.Run()
@@ -153,7 +164,9 @@ func TestSrv_Parse(t *testing.T) {
 				Y int
 				Z int
 			}
-			err := c.Parse(&body)
+			err := c.Parse(body)
+			t.AssertNE(err, nil)
+			err = c.Parse(&body)
 			t.Assert(err, nil)
 			t.Assert(len(body), 2)
 			t.Assert(body[0].Y, 2)
@@ -168,16 +181,23 @@ func TestSrv_Parse(t *testing.T) {
 	})
 }
 func TestSrv_Response(t *testing.T) {
-	srv := cmdsrv.New(&testAdapter{
+	server1 := &testAdapter{
 		request: []*cmdsrv.Request{
+			{cmdsrv.CmdConnected, "", nil},
 			{"a", "", nil},
 			{"b", "", nil},
 			{"c", "", nil},
+			{cmdsrv.CmdHeartbeat, "", nil},
 			{"d", "", nil},
 			{"e", "", nil},
 			{"f", "", nil},
+			{cmdsrv.CmdClosed, "", nil},
+			{"g", "", nil},
 		},
-	})
+		sid: "1",
+	}
+	server2 := &testAdapter{sid: "2"}
+	srv := cmdsrv.New(server1, server2)
 	gtest.C(t, func(t *gtest.T) {
 		srv.Use(func(c *cmdsrv.Context) {
 			c.Next()
@@ -209,19 +229,43 @@ func TestSrv_Response(t *testing.T) {
 			}
 		})
 		srv.Handle("a", func(c *cmdsrv.Context) {
+			c.Set("name", "eyasliu")
 			c.OK()
 		})
 		srv.Handle("b", func(c *cmdsrv.Context) {
+			t.Assert(c.Get("name"), "eyasliu")
 			c.OK("str")
 		})
 		srv.Handle("c", func(c *cmdsrv.Context) {
+			t.Assert(c.Get("name"), "eyasliu")
 			c.OK(123)
 		})
 		srv.Handle("d", func(c *cmdsrv.Context) {
+			t.Assert(c.Get("name"), "eyasliu")
 			c.Err(errors.New("err1"), 11)
+
 		})
 		srv.Handle("e", func(c *cmdsrv.Context) {
 			c.Resp(12, "msg2", "data2")
+			c.Push(&cmdsrv.Response{
+				Cmd: "tp",
+			})
+			c.Srv.Push("1", &cmdsrv.Response{
+				Cmd: "tp",
+			})
+			t.AssertNE(c.Srv.Push("100", &cmdsrv.Response{
+				Cmd: "tp",
+			}), nil)
+			c.Broadcast(&cmdsrv.Response{
+				Cmd: "bdc",
+			})
+			t.AssertIN(c.GetAllSID(), []string{"1", "2"})
+			t.AssertIN(c.GetServerAllSID(), []string{"1"})
+			t.Assert(c.Close(), nil)
+			t.AssertNE(c.Srv.Close("100"), nil)
+		})
+		srv.Handle("g", func(c *cmdsrv.Context) {
+			t.Assert(c.Get("name"), nil)
 		})
 		srv.Run()
 		time.Sleep(100 * time.Millisecond)
@@ -236,6 +280,7 @@ func TestSrv_State(t *testing.T) {
 		},
 	})
 	uid := 10
+	srv.SetStateExpire(10 * time.Millisecond)
 	srv.Use(func(c *cmdsrv.Context) {
 		c.Set("uid", uid)
 	})
@@ -244,37 +289,43 @@ func TestSrv_State(t *testing.T) {
 			t.Assert(c.Get("uid").(int), uid)
 		})
 		srv.Run()
+		srv.SetState("test.sid", "tk", "tv")
+		t.Assert(srv.GetState("test.sid", "tk"), "tv")
 		time.Sleep(50 * time.Millisecond)
+		t.Assert(srv.GetState("test.sid", "tk"), nil)
 	})
 }
 
 func TestSrv_MutilServer(t *testing.T) {
-	server1 := &testAdapter{request: []*cmdsrv.Request{{"a", "1", []byte{1}}}}
-	server2 := &testAdapter{request: []*cmdsrv.Request{{"a", "2", []byte{2}}}}
-	server3 := &testAdapter{request: []*cmdsrv.Request{{"a", "3", []byte{3}}}}
-	server4 := &testAdapter{request: []*cmdsrv.Request{{"a", "4", []byte{4}}}}
-	server5 := &testAdapter{request: []*cmdsrv.Request{{"a", "5", []byte{5}}}}
+	server1 := &testAdapter{request: []*cmdsrv.Request{{"a", "1", []byte{1}}}, sid: "1"}
+	server2 := &testAdapter{request: []*cmdsrv.Request{{"a", "2", []byte{2}}}, sid: "2"}
+	server3 := &testAdapter{request: []*cmdsrv.Request{{"a", "3", []byte{3}}}, sid: "3"}
+	server4 := &testAdapter{request: []*cmdsrv.Request{{"a", "4", []byte{4}}}, sid: "4"}
+	server5 := &testAdapter{request: []*cmdsrv.Request{{"a", "5", []byte{5}}}, sid: "5"}
 	gtest.C(t, func(t *gtest.T) {
 		srv := cmdsrv.New(server1, server2)
-
+		seqnos := []string{}
 		srv.Handle("a", func(c *cmdsrv.Context) {
-			// atomic.AddInt32(&sum, int32(c.RawData[0]))
+			seqnos = append(seqnos, c.Seqno)
 			c.OK()
 		})
 		srv.AddServer(server3)
 		go srv.Run()
 		time.Sleep(50 * time.Millisecond)
 
-		// t.Assert(sum, 6) // 1 + 2 + 3
+		t.AssertIN(seqnos, []string{"1", "2", "3"}) // 1 + 2 + 3
 
 		srv.AddServer(server4)
 		time.Sleep(50 * time.Millisecond)
 
-		// t.Assert(sum, 10) // 1 + 2 + 3 + 4
+		t.AssertIN(seqnos, []string{"1", "2", "3", "4"}) // 1 + 2 + 3 + 4
 
 		srv.AddServer(server5)
 		time.Sleep(50 * time.Millisecond)
-		// t.Assert(sum, 15) // 1 + 2 + 3 + 4 + 5
+		t.AssertIN(seqnos, []string{"1", "2", "3", "4", "5"}) // 1 + 2 + 3 + 4 + 5
+
+		// t.Log(srv.GetAllSID())
+		t.AssertIN(srv.GetAllSID(), []string{"1", "2", "3", "5", "4"})
 
 	})
 }
