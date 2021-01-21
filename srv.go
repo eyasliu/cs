@@ -50,6 +50,12 @@ func (s *Srv) SetStateExpire(t time.Duration) *Srv {
 	return s
 }
 
+// SetStateAdapter 设置状态管理的存储适配器，默认是存储在内存中，可设置为其他
+func (s *Srv) SetStateAdapter(adapter gcache.Adapter) *Srv {
+	s.state.SetAdapter(adapter)
+	return s
+}
+
 // Use 增加全局中间件
 func (s *Srv) Use(handlers ...HandlerFunc) *Srv {
 	s.middleware = append(s.middleware, handlers...)
