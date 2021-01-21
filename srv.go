@@ -3,13 +3,15 @@ package cmdsrv
 import (
 	"errors"
 	"sync"
+	"time"
 
 	"github.com/gogf/gf/os/gcache"
 )
 
 // Srv 基于命令的消息处理框架
 type Srv struct {
-	Server     []ServerAdapter          // 服务器适配器
+	Server     []ServerAdapter // 服务器适配器
+	serverMu   sync.Mutex
 	isRunning  bool                     // 服务是否已经正在运行
 	runErr     chan error               // 服务运行错误通知
 	middleware []HandlerFunc            // 全局路由中间件
@@ -27,11 +29,9 @@ func New(server ...ServerAdapter) *Srv {
 	}
 }
 
-var serverMu sync.RWMutex
-
 // AddServer 增加服务适配器
 func (s *Srv) AddServer(server ...ServerAdapter) *Srv {
-	serverMu.Lock()
+	s.serverMu.Lock()
 	s.Server = append(s.Server, server...)
 
 	// 如果服务已经正在 running 了，增加的时候自动启动
@@ -40,7 +40,13 @@ func (s *Srv) AddServer(server ...ServerAdapter) *Srv {
 			go s.startServer(ser)
 		}
 	}
-	serverMu.Unlock()
+	s.serverMu.Unlock()
+	return s
+}
+
+// SetStateExpire 设置会话的状态有效时长
+func (s *Srv) SetStateExpire(t time.Duration) *Srv {
+	s.state.keyExpireTimeout = t
 	return s
 }
 
@@ -236,12 +242,12 @@ func (s *Srv) getSidServer(sid string) (ServerAdapter, error) {
 
 // Run 开始接收命令消息，运行框架，会阻塞当前 goroutine
 func (s *Srv) Run() error {
-	serverMu.Lock()
+	s.serverMu.Lock()
 	s.isRunning = true
 	for _, server := range s.Server {
 		go s.startServer(server)
 	}
-	serverMu.Unlock()
+	s.serverMu.Unlock()
 	err := <-s.runErr
 	return err
 	// if err := s.receive(); err != nil {

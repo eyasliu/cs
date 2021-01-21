@@ -9,10 +9,9 @@ import (
 
 // State 会话的状态数据管理
 type State struct {
-	cache *gcache.Cache
+	cache            *gcache.Cache
+	keyExpireTimeout time.Duration
 }
-
-const keyExpireTimeout = 24 * time.Hour
 
 // Get 获取指定会话的指定 key 的状态值
 func (s *State) Get(sid, key string) interface{} {
@@ -24,7 +23,7 @@ func (s *State) Get(sid, key string) interface{} {
 // Set 设置指定会话的状态键值对
 func (s *State) Set(sid, key string, val interface{}) {
 	ck := s.getCacheKey(sid, key)
-	s.cache.Set(ck, val, keyExpireTimeout)
+	s.cache.Set(ck, val, s.keyExpireTimeout)
 }
 
 // 销毁指定会话的所有状态
