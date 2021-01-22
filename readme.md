@@ -88,7 +88,7 @@ func main() {
   })
   go srv.Run()
 
-  log.Fatal(http.ListenAndServe(":8080", nil))
+  http.ListenAndServe(":8080", nil)
 }
 ```
 
@@ -109,7 +109,7 @@ func main() {
   srv := ws.Srv(ws)
   go srv.Run()
 
-  log.Fatal(http.ListenAndServe(":8080", nil))
+  http.ListenAndServe(":8080", nil)
 }
 ```
 
@@ -117,7 +117,6 @@ func main() {
 
 ```go
 import (
-  "net"
   "github.com/eyasliu/cmdsrv/xtcp"
 )
 
@@ -136,12 +135,11 @@ func main() {
 
 ```go
 import (
-  "net"
-  "github.com/eyasliu/cmdsrv/xtcp"
+  "github.com/eyasliu/cmdsrv/xgnet"
 )
 
 func main() {
-  server := xtcp.New("127.0.0.1:8520")
+  server := xgnet.New("127.0.0.1:8520")
   srv, err := server.Srv()
   if err != nil {
     panic(err)

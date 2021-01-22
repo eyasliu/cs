@@ -1,15 +1,17 @@
 package xgnet
 
 import (
+	"errors"
 	"sync"
 
+	"github.com/eyasliu/cmdsrv"
 	"github.com/panjf2000/gnet"
 )
 
 type GNet struct {
 	*gnet.EventServer
 	Config    *Config
-	session   map[string]gnet.Conn
+	session   map[string]*Conn
 	sessionMu sync.RWMutex
 	receive   chan *reqMessage
 	sidCount  uint64
@@ -31,7 +33,7 @@ func New(v interface{}) *GNet {
 
 	return &GNet{
 		Config:  conf,
-		session: map[string]gnet.Conn{},
+		session: map[string]*Conn{},
 		receive: make(chan *reqMessage, 50),
 	}
 }
@@ -39,6 +41,56 @@ func New(v interface{}) *GNet {
 // func (g *GNet) React(frame []byte, c gnet.Conn) (out []byte, action gnet.Action) {
 
 // }
+
+func (g *GNet) Read() (string, *cmdsrv.Request, error) {
+	m, ok := <-g.receive
+	if !ok {
+		return "", nil, errors.New("websocker server is shutdown")
+	}
+	return m.sid, m.data, nil
+}
+func (g *GNet) Write(sid string, resp *cmdsrv.Response) error {
+	conn, ok := g.session[sid]
+	if !ok {
+		return errors.New("connection is already close")
+	}
+	return conn.Send(resp)
+}
+func (g *GNet) Close(sid string) error {
+	g.sessionMu.RLock()
+	conn, ok := g.session[sid]
+	g.sessionMu.RUnlock()
+	if !ok {
+		return errors.New("conn is already close")
+	}
+	err := conn.destroy()
+	if err != nil {
+		return err
+	}
+	g.receive <- &reqMessage{
+		data: &cmdsrv.Request{
+			Cmd: cmdsrv.CmdClosed,
+		},
+		sid: sid,
+	}
+	g.sessionMu.Lock()
+	delete(g.session, sid)
+	g.sessionMu.Unlock()
+	return nil
+}
+func (g *GNet) GetAllSID() []string {
+	sids := make([]string, len(g.session))
+	g.sessionMu.RLock()
+	for sid := range g.session {
+		sids = append(sids, sid)
+	}
+	g.sessionMu.RUnlock()
+	return sids
+}
+
+func (g *GNet) Srv() (*cmdsrv.Srv, error) {
+	return cmdsrv.New(g), nil
+}
 
 func (g *GNet) Run() error {
 	err := gnet.Serve(g, g.Config.addrURI(), gnet.WithMulticore(true))
