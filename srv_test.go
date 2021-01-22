@@ -1,3 +1,5 @@
+// +build !race test
+
 package cmdsrv_test
 
 import (
@@ -66,7 +68,7 @@ func TestSrv_MiddlewareCall(t *testing.T) {
 	gtest.C(t, func(t *gtest.T) {
 		srv.Use(cmdsrv.AccessLogger())
 		srv.Use(cmdsrv.AccessLogger(&testAdapter{}, struct{}{}, "SRVNAME"))
-		srv.Use(cmdsrv.Heartbeat(10 * time.Millisecond))
+		srv.Use(srv.Heartbeat(10 * time.Millisecond))
 		srv.Use(cmdsrv.Recover())
 		srv.Use(func(c *cmdsrv.Context) {
 			c.Seqno = "a"
@@ -229,21 +231,16 @@ func TestSrv_Response(t *testing.T) {
 			}
 		})
 		srv.Handle("a", func(c *cmdsrv.Context) {
-			c.Set("name", "eyasliu")
 			c.OK()
 		})
 		srv.Handle("b", func(c *cmdsrv.Context) {
-			t.Assert(c.Get("name"), "eyasliu")
 			c.OK("str")
 		})
 		srv.Handle("c", func(c *cmdsrv.Context) {
-			t.Assert(c.Get("name"), "eyasliu")
 			c.OK(123)
 		})
 		srv.Handle("d", func(c *cmdsrv.Context) {
-			t.Assert(c.Get("name"), "eyasliu")
 			c.Err(errors.New("err1"), 11)
-
 		})
 		srv.Handle("e", func(c *cmdsrv.Context) {
 			c.Resp(12, "msg2", "data2")
@@ -263,9 +260,6 @@ func TestSrv_Response(t *testing.T) {
 			t.AssertIN(c.GetServerAllSID(), []string{"1"})
 			t.Assert(c.Close(), nil)
 			t.AssertNE(c.Srv.Close("100"), nil)
-		})
-		srv.Handle("g", func(c *cmdsrv.Context) {
-			t.Assert(c.Get("name"), nil)
 		})
 		srv.Run()
 		time.Sleep(100 * time.Millisecond)
