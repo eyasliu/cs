@@ -131,7 +131,27 @@ func main() {
   srv.Run() // 阻塞运行
 }
 ```
-[用在 HTTP](./xhttp)
+
+[使用 gnet](./gnet), [gnet](https://github.com/panjf2000/gnet) 是一个性能非常高的网络框架，尤其在超高并发情况下性能更优，使用 gnet 作为 tcp 服务的底层框架
+
+```go
+import (
+  "net"
+  "github.com/eyasliu/cmdsrv/xtcp"
+)
+
+func main() {
+  server := xtcp.New("127.0.0.1:8520")
+  srv, err := server.Srv()
+  if err != nil {
+    panic(err)
+  }
+
+  srv.Run() // 阻塞运行
+}
+```
+
+[用在 HTTP](./xhttp)，只是请求响应，支持服务器主动推送
 
 ```go
 import (
@@ -142,12 +162,44 @@ import (
 
 func main() {
   server := xhttp.New()
-  http.Handle("/cmd1", server)
-  http.HandleFunc("/cmd1", server.Handler)
+  http.Handle("/cmd", server)
+  http.HandleFunc("/cmd2", server.Handler)
   srv := server.Srv()
 	// http 不需要 srv.Run()
 
-  log.Fatal(http.ListenAndServe(":8080", nil))
+  http.ListenAndServe(":8080", nil)
+}
+```
+
+多个适配器混用，让 websocket, tcp, http 共用同一套逻辑
+
+```go
+import (
+  "net/http"
+  "github.com/eyasliu/cmdsrv"
+  "github.com/eyasliu/cmdsrv/xhttp"
+  "github.com/eyasliu/cmdsrv/xwebsocket"
+  "github.com/eyasliu/cmdsrv/xtcp"
+)
+
+func main() {
+  // http adapter
+  server := xhttp.New()
+  http.Handle("/cmd", server)
+  http.HandleFunc("/cmd2", server.Handler)
+  
+  // websocket adapter
+  ws := xwebsocket.New()
+  http.Handle("/ws", server)
+
+  // tcp adapter
+  tcp := xtcp.New()
+
+  // boot srv
+  go tcp.Run()
+  go http.ListenAndServe(":8080", nil)
+
+  srv.Run() // 阻塞运行
 }
 ```
 
