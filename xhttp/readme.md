@@ -1,10 +1,12 @@
 # cmdsrv http
 
-HTTP 适配器，该适配器比较特殊，因为 HTTP 协议的限制只能响应数据，不能推送数据，所以使用该适配器时，cmdsrv 的 `Context` 的主动推送数据的函数都将失效，只能响应数据
+HTTP 适配器，该适配器支持请求响应模式，服务端推送使用 SSE(Server-Sent Event)，所以需要客户端支持，会话 sid 使用 cookie 做保持
 
 ## 数据协议
 
-只能通过 POST, PUT, DELETE 方法请求，因为只有这些请求才能在 HTTP BODY 放数据，数据类型是 json，遵循以下格式 ，对 http header 的 `Content-Type` 没有要求，无论设置成什么值，都会以 json 去解析 body 数据
+#### 请求响应
+
+请求响应模式只能通过 POST, PUT, DELETE 方法发起，因为只有这些请求才能在 HTTP BODY 放数据，数据类型是 json，遵循以下格式 ，对 http header 的 `Content-Type` 没有要求，无论设置成什么值，都会以 json 去解析 body 数据
 
 **请求json**
 ```json
@@ -36,6 +38,10 @@ HTTP 适配器，该适配器比较特殊，因为 HTTP 协议的限制只能响
  * code 响应状态码，不等于 0 表示异常， -1 表示不支持请求的cmd，其他业务码根据业务适应
  * msg 响应说明，只在code不等于 0 时才有意义
  * data 表示响应数据，可能是任意值，如 string, number, object, array, null
+
+#### 服务器推送
+
+客户端通过 EventSource 连接上时必须要带上 Cookie，因为使用 Cookie 作为会话记录，否则将无法推送至对应客户端
 
 ## 使用示例
 
