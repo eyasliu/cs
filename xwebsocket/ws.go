@@ -74,7 +74,9 @@ func (ws *WS) Read() (string, *cmdsrv.Request, error) {
 
 // Write 实现 cmdsrv.ServerAdapter 接口，给连接推送消息
 func (ws *WS) Write(sid string, resp *cmdsrv.Response) error {
+	ws.sessionMu.RLock()
 	conn, ok := ws.session[sid]
+	ws.sessionMu.RUnlock()
 	if !ok {
 		return errors.New("connection is already close")
 	}
