@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Echo Demo</title>
+</head>
+<body>
+    <div>
+        <input type="text" id="httptext"> <button id="httpsend">HTTP send</button>
+    </div>
+    <div>
+        <input type="text" id="wstext"> <button id="wssend">Websocket send</button>
+    </div>
+    <div id="recv"></div>
+    <script>
+        var httpUrl = "/http"
+        var wsUrl = "ws://" + location.host + "/ws"
+        function addRecv(text) {
+            var el = document.createElement("div")
+            el.innerText = text
+            document.getElementById("recv").appendChild(el)
+        }
+        function httpSend(text) {
+            fetch(httpUrl, {
+                method: "POST",
+                body: JSON.stringify({
+                    cmd: "echo",
+                    data: text,
+                })
+            }).then(r => r.text())
+            .then(r => {
+                addRecv(r)
+            })
+        }
+
+        document.getElementById("httpsend").addEventListener("click", function(e) {
+            var val = document.getElementById("httptext").value
+            httpSend(val)
+        })
+        document.getElementById("wssend").addEventListener("click", function(e) {
+            var val = document.getElementById("wstext").value
+            wsSend(val)
+        })
+
+        var ws = new WebSocket(wsUrl)
+        ws.onopen = function(e) {
+            addRecv("websocket opened")
+        }
+        ws.onmessage = function(e) {
+            addRecv(e.data)
+        }
+        ws.onclose = function(e) {
+            addRecv("websocket closed.")
+        }
+        function wsSend(text) {
+            ws.send(JSON.stringify({
+                cmd:"echo",
+                data: text,
+            }))
+        }
+
+        
+
+
+
+    </script>
+</body>
+</html>
