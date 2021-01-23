@@ -2,6 +2,7 @@ package cmdsrv
 
 import (
 	"errors"
+	"fmt"
 	"sync"
 	"time"
 
@@ -199,7 +200,7 @@ func (s *Srv) onSidClosed(sid string) {
 // 接收服务器适配器产生的消息，并执行路由处理函数
 func (s *Srv) startServer(server ServerAdapter) {
 	for {
-		sid, req, err := server.Read()
+		sid, req, err := server.Read(s)
 		if err != nil {
 			s.runErr <- err
 			return
@@ -248,6 +249,17 @@ func (s *Srv) getSidServer(sid string) (ServerAdapter, error) {
 
 // Run 开始接收命令消息，运行框架，会阻塞当前 goroutine
 func (s *Srv) Run() error {
+	mdlLen := len(s.middleware)
+	for cmd, hs := range s.routes {
+		text := ""
+		if len(hs) > 0 {
+			h := hs[len(hs)-1]
+			text = fmt.Sprintf("[SRV-debug] %s => %s[%d handlers]", cmd, funcName(h), len(hs)+mdlLen)
+		} else {
+			text = fmt.Sprintf("[SRV-debug] %s => [%d handlers]", cmd, mdlLen)
+		}
+		fmt.Println(text)
+	}
 	s.serverMu.Lock()
 	s.isRunning = true
 	for _, server := range s.Server {

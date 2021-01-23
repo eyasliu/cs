@@ -33,11 +33,14 @@ func New() *HTTP {
 		hbTime:  defaultHeartBeatTime,
 		msgType: SSEEvent,
 	}
-	h.srv = cmdsrv.New(h)
 	return h
 }
 
 func (h *HTTP) Handler(w http.ResponseWriter, req *http.Request) {
+	if h.srv == nil {
+		w.Write([]byte("srv not running"))
+		return
+	}
 	sid := h.setSid(w, req)
 	if req.Method == "GET" {
 		h.invokeSSE(sid, w, req)
@@ -68,7 +71,8 @@ func (h *HTTP) Write(sid string, resp *cmdsrv.Response) error {
 	return nil
 }
 
-func (h *HTTP) Read() (sid string, req *cmdsrv.Request, err error) {
+func (h *HTTP) Read(srv *cmdsrv.Srv) (sid string, req *cmdsrv.Request, err error) {
+	h.srv = srv
 	<-make(chan struct{})
 	return "", nil, errors.New("HTTP Adapter unsupport Read")
 }

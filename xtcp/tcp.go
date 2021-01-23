@@ -73,7 +73,7 @@ func (t *TCP) Srv() (*cmdsrv.Srv, error) {
 }
 
 // Read 实现 cmdsrv.ServerAdapter 接口，读取消息，每次返回一条，循环读取
-func (t *TCP) Read() (string, *cmdsrv.Request, error) {
+func (t *TCP) Read(s *cmdsrv.Srv) (string, *cmdsrv.Request, error) {
 	m, ok := <-t.receive
 	if !ok {
 		return "", nil, errors.New("websocker server is shutdown")

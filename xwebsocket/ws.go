@@ -64,7 +64,7 @@ func (ws *WS) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 }
 
 // Read 实现 cmdsrv.ServerAdapter 接口，读取消息，每次返回一条，循环读取
-func (ws *WS) Read() (string, *cmdsrv.Request, error) {
+func (ws *WS) Read(s *cmdsrv.Srv) (string, *cmdsrv.Request, error) {
 	m, ok := <-ws.receive
 	if !ok {
 		return "", nil, errors.New("websocker server is shutdown")

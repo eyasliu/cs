@@ -42,7 +42,7 @@ type ServerAdapter interface {
 	// Write send response message to connect
 	Write(sid string, resp *Response) error
 	// Read read message form connect
-	Read() (sid string, req *Request, err error)
+	Read(*Srv) (sid string, req *Request, err error)
 	// Close close specify connect
 	Close(sid string) error
 
