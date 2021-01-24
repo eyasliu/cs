@@ -42,7 +42,7 @@ func New(v interface{}) *GNet {
 
 // }
 
-func (g *GNet) Read() (string, *cmdsrv.Request, error) {
+func (g *GNet) Read(s *cmdsrv.Srv) (string, *cmdsrv.Request, error) {
 	m, ok := <-g.receive
 	if !ok {
 		return "", nil, errors.New("websocker server is shutdown")

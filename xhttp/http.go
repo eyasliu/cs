@@ -55,6 +55,9 @@ func (h *HTTP) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 }
 
 func (h *HTTP) Srv() *cmdsrv.Srv {
+	if h.srv == nil {
+		h.srv = cmdsrv.New(h)
+	}
 	return h.srv
 }
 

@@ -21,7 +21,7 @@ type testAdapter struct {
 	stateMu  sync.RWMutex
 }
 
-func (a *testAdapter) Read() (string, *cmdsrv.Request, error) {
+func (a *testAdapter) Read(r *cmdsrv.Srv) (string, *cmdsrv.Request, error) {
 	if len(a.request) > 0 {
 		m := a.request[0]
 		a.request = a.request[1:len(a.request)]
