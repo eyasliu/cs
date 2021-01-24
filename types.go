@@ -37,6 +37,15 @@ type Response struct {
 	Data     interface{} // response data
 }
 
+func (r *Response) fill() {
+	if r.Code == 0 && r.Msg == "" {
+		r.Msg = msgOk
+	}
+	if r.Seqno == "" {
+		r.Seqno = randomString(12)
+	}
+}
+
 // ServerAdapter defined integer to srv server
 type ServerAdapter interface {
 	// Write send response message to connect

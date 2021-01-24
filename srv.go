@@ -95,6 +95,7 @@ func (s *Srv) Handle(cmd string, handlers ...HandlerFunc) *Srv {
 
 // Push 往指定的会话 SID 连接推送消息
 func (s *Srv) Push(sid string, resp *Response) error {
+	resp.fill()
 	server, err := s.getSidServer(sid)
 	if err != nil {
 		return err
@@ -104,11 +105,13 @@ func (s *Srv) Push(sid string, resp *Response) error {
 
 // PushServer 往指定适配器的 sid 推送消息
 func (s *Srv) PushServer(server ServerAdapter, sid string, resp *Response) error {
+	resp.fill()
 	return server.Write(sid, resp)
 }
 
 // Broadcast 往所有可用的会话推送消息
 func (s *Srv) Broadcast(resp *Response) {
+	resp.fill()
 	for _, server := range s.Server {
 		for _, sid := range s.GetAllSID() {
 			server.Write(sid, resp)
@@ -171,6 +174,7 @@ func (s *Srv) NewContext(server ServerAdapter, sid string, req *Request) *Contex
 		handlers = make([]HandlerFunc, 0, len(s.middleware)+len(routeHandlers))
 		handlers = append(handlers, s.middleware...)
 		handlers = append(handlers, routeHandlers...)
+		ctx.OK() // 匹配到了路由，但是 handler 没有设置响应
 	} else {
 		handlers = make([]HandlerFunc, 0, len(s.middleware)+1)
 		handlers = append(handlers, s.middleware...)

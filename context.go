@@ -104,6 +104,16 @@ func (c *Context) Set(key string, v interface{}) {
 	c.Srv.state.Set(c.SID, key, v)
 }
 
+// GetState 获取指定 sid 和 key 的状态值
+func (c *Context) GetState(sid, key string) interface{} {
+	return c.Srv.state.Get(sid, key)
+}
+
+// SetState 设置当前会话的状态
+func (c *Context) SetState(sid, key string, v interface{}) {
+	c.Srv.state.Set(sid, key, v)
+}
+
 // Err 响应错误，如果错误对象为空则忽略不处理
 func (c *Context) Err(err error, code int) {
 	if err != nil {
@@ -137,7 +147,32 @@ func (c *Context) Resp(code int, msg string, data ...interface{}) {
 
 // Push 往当前会话推送消息
 func (c *Context) Push(data *Response) error {
+	data.fill()
+	logger := c.Get(loggerCtxKey)
+	if logger != nil {
+		name, ok := c.Get(loggerNameCtxKey).(string)
+		if !ok {
+			name = "SRV"
+		}
+		logger.(printLogger).Debug(fmt.Sprintf("%s PUSH SID=%s CMD=%s SEQ=%s Code=%d Msg=%s %s",
+			name, c.SID, data.Cmd, data.Seqno, data.Code, data.Msg, getLogDataString(data.Data)))
+	}
 	return c.Srv.PushServer(c.Server, c.SID, data)
+}
+
+// PushSID 往指定SID会话推送消息
+func (c *Context) PushSID(sid string, data *Response) error {
+	data.fill()
+	logger := c.Get(loggerCtxKey)
+	if logger != nil {
+		name, ok := c.Get(loggerNameCtxKey).(string)
+		if !ok {
+			name = "SRV"
+		}
+		logger.(printLogger).Debug(fmt.Sprintf("%s PUSH SID=%s CMD=%s SEQ=%s Code=%d Msg=%s %s",
+			name, sid, data.Cmd, data.Seqno, data.Code, data.Msg, getLogDataString(data.Data)))
+	}
+	return c.Srv.Push(sid, data)
 }
 
 // Close 关闭当前会话连接

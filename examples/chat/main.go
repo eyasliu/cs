@@ -31,7 +31,7 @@ func main() {
 
 	srv.Handle("register", func(c *cmdsrv.Context) {
 		var body struct {
-			Name string `p:"name" v:"required|min:4#名称必填|名称最小4个字符"`
+			Name string `p:"name" v:"required#名称必填" json:"name"`
 		}
 		assert(c.Parse(&body))
 
@@ -46,6 +46,7 @@ func main() {
 			Cmd:  "user_online",
 			Data: body,
 		})
+		// c.OK()
 	})
 
 	user := srv.Group(func(c *cmdsrv.Context) {
@@ -56,7 +57,7 @@ func main() {
 		}
 		c.Next()
 	})
-	user.Handle("message", func(c *cmdsrv.Context) {
+	user.Handle("new_message", func(c *cmdsrv.Context) {
 		var body struct {
 			Message string `v:"required#消息不能为空"`
 		}
@@ -73,11 +74,23 @@ func main() {
 			Data: msg,
 		}
 		for _, sid := range c.GetAllSID() {
-			if c.Srv.GetState(sid, "name") != nil {
-				c.Srv.Push(sid, pushMsg)
+			if c.GetState(sid, "name") != nil {
+				c.PushSID(sid, pushMsg)
 			} else {
-				c.Srv.Push(sid, &cmdsrv.Response{
+				c.PushSID(sid, &cmdsrv.Response{
 					Cmd: "hide_message",
+				})
+			}
+		}
+	})
+	user.Handle(cmdsrv.CmdClosed, func(c *cmdsrv.Context) {
+		for _, sid := range c.GetAllSID() {
+			if c.GetState(sid, "name") != nil {
+				c.PushSID(sid, &cmdsrv.Response{
+					Cmd: "user_offline",
+					Data: map[string]interface{}{
+						"name": c.Get("name"),
+					},
 				})
 			}
 		}

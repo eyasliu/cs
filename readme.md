@@ -163,9 +163,9 @@ func main() {
   http.Handle("/cmd", server)
   http.HandleFunc("/cmd2", server.Handler)
   srv := server.Srv()
-	// http 不需要 srv.Run()
-
-  http.ListenAndServe(":8080", nil)
+  go http.ListenAndServe(":8080", nil)
+	
+  srv.Run()
 }
 ```
 
@@ -197,6 +197,7 @@ func main() {
   go tcp.Run()
   go http.ListenAndServe(":8080", nil)
 
+  srv := cmdsrv.New(server, ws, tcp)
   srv.Run() // 阻塞运行
 }
 ```

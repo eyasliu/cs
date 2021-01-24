@@ -15,6 +15,25 @@ func (consoleLogger) Debug(a ...interface{}) {
 	fmt.Println(a...)
 }
 
+const loggerCtxKey = "__logger_middleware_instence__"
+const loggerNameCtxKey = "__logger_middleware_name__"
+
+func getLogDataString(v interface{}) string {
+	data := ""
+	switch v.(type) {
+	case nil:
+		data = "nil"
+	case string:
+		data = v.(string)
+	case []byte:
+		data = string(v.([]byte))
+	default:
+		bt, _ := json.Marshal(v)
+		data = string(bt)
+	}
+	return data
+}
+
 // AccessLogger 打印请求响应中间件
 // 2 个可选参数，如果参数是 printLogger 接口类型则用于设置打印日志的 Logger 实例，如果是 string 类型则用于设置日志前缀
 // AccessLogger("MySRV") 设置名称
@@ -33,25 +52,17 @@ func AccessLogger(args ...interface{}) HandlerFunc {
 		}
 	}
 	return func(c *Context) {
+		if c.Get(loggerCtxKey) == nil {
+			c.Set(loggerCtxKey, logger)
+			c.Set(loggerNameCtxKey, name)
+		}
 		if c.Cmd == CmdConnected ||
 			c.Cmd == CmdClosed ||
 			c.Cmd == CmdHeartbeat {
 			c.Next()
 			return
 		}
-		logger.Debug(fmt.Sprintf("%s RECV CMD=%s SEQ=%s %s", name, c.Cmd, c.Seqno, string(c.RawData)))
+		logger.Debug(fmt.Sprintf("%s RECV SID=%s CMD=%s SEQ=%s %s", name, c.SID, c.Cmd, c.Seqno, string(c.RawData)))
 		c.Next()
-		data := ""
-		switch c.Response.Data.(type) {
-
-		case string:
-			data = c.Response.Data.(string)
-		case []byte:
-			data = string(c.Response.Data.([]byte))
-		default:
-			bt, _ := json.Marshal(c.Response.Data)
-			data = string(bt)
-		}
-		logger.Debug(fmt.Sprintf("%s RESP CMD=%s SEQ=%s %v", name, c.Cmd, c.Seqno, data))
 	}
 }
