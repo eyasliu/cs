@@ -1,4 +1,4 @@
 test.sh
 cov*.html
 covprofile
-__debug
+__debug*

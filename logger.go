@@ -56,9 +56,10 @@ func AccessLogger(args ...interface{}) HandlerFunc {
 			c.Set(loggerCtxKey, logger)
 			c.Set(loggerNameCtxKey, name)
 		}
-		if c.Cmd == CmdConnected ||
+		if (c.Cmd == CmdConnected ||
 			c.Cmd == CmdClosed ||
-			c.Cmd == CmdHeartbeat {
+			c.Cmd == CmdHeartbeat) &&
+			(len(c.handlers) == len(c.Srv.middleware)) { // 有路由监听的话就要打印
 			c.Next()
 			return
 		}

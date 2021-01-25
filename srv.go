@@ -160,14 +160,6 @@ func (s *Srv) NewContext(server ServerAdapter, sid string, req *Request) *Contex
 		Server: server,
 	}
 
-	// call internal hooks
-	switch req.Cmd {
-	case CmdConnected:
-		s.onSidConnected(sid)
-	case CmdClosed:
-		s.onSidClosed(sid)
-	}
-
 	routeHandlers, ok := s.routes[req.Cmd]
 	var handlers []HandlerFunc
 	if ok {
@@ -178,7 +170,6 @@ func (s *Srv) NewContext(server ServerAdapter, sid string, req *Request) *Contex
 	} else {
 		handlers = make([]HandlerFunc, 0, len(s.middleware)+1)
 		handlers = append(handlers, s.middleware...)
-		handlers = append(handlers, RouteNotFound)
 	}
 	ctx.handlers = handlers
 	ctx.handlerIndex = -1
@@ -227,6 +218,14 @@ func (s *Srv) startServer(server ServerAdapter) {
 				}()
 			}
 			s.CallContext(ctx)
+
+			// call internal hooks
+			switch req.Cmd {
+			case CmdConnected:
+				s.onSidConnected(sid)
+			case CmdClosed:
+				s.onSidClosed(sid)
+			}
 		}(sid, req)
 	}
 }
