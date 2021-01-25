@@ -11,23 +11,27 @@ import (
 
 // Srv 基于命令的消息处理框架
 type Srv struct {
-	Server     []ServerAdapter // 服务器适配器
-	serverMu   sync.Mutex
-	isRunning  bool                     // 服务是否已经正在运行
-	runErr     chan error               // 服务运行错误通知
-	middleware []HandlerFunc            // 全局路由中间件
-	routes     map[string][]HandlerFunc // 路由的处理函数
-	state      *State                   // SID 会话的状态数据
+	Server         []ServerAdapter // 服务器适配器
+	serverMu       sync.Mutex
+	isRunning      bool                     // 服务是否已经正在运行
+	runErr         chan error               // 服务运行错误通知
+	middleware     []HandlerFunc            // 全局路由中间件
+	pushMiddleware []HandlerFunc            // 全局推送中间件
+	routes         map[string][]HandlerFunc // 路由的处理函数
+	state          *State                   // SID 会话的状态数据
 }
 
 // New 指定服务器实例化一个消息服务
 func New(server ...ServerAdapter) *Srv {
-	return &Srv{
+	srv := &Srv{
 		Server: server,
 		runErr: make(chan error, 0),
 		routes: map[string][]HandlerFunc{},
 		state:  &State{cache: gcache.New()},
 	}
+	// 推送前填充数据
+	srv.UsePush(fillPushResp)
+	return srv
 }
 
 // AddServer 增加服务适配器
@@ -60,6 +64,12 @@ func (s *Srv) SetStateAdapter(adapter gcache.Adapter) *Srv {
 // Use 增加全局中间件
 func (s *Srv) Use(handlers ...HandlerFunc) *Srv {
 	s.middleware = append(s.middleware, handlers...)
+	return s
+}
+
+// UsePush 增加推送中间件，该类中间件只会在使用 *Context 服务器主动推送的场景下才会被调用，如 Push, Broadcast, PushSID，在请求-响应模式时不会被调用，使用 ctx.Srv 调用也不会被触发
+func (s *Srv) UsePush(handlers ...HandlerFunc) *Srv {
+	s.pushMiddleware = append(s.pushMiddleware, handlers...)
 	return s
 }
 
@@ -111,7 +121,7 @@ func (s *Srv) PushServer(server ServerAdapter, sid string, resp *Response) error
 
 // Broadcast 往所有可用的会话推送消息
 func (s *Srv) Broadcast(resp *Response) {
-	resp.fill()
+	// resp.fill()
 	for _, server := range s.Server {
 		for _, sid := range s.GetAllSID() {
 			server.Write(sid, resp)
@@ -125,11 +135,11 @@ func (s *Srv) Close(sid string) error {
 	if err != nil {
 		return errors.New("the sid is already close")
 	}
-	return s.CloseByServer(server, sid)
+	return s.CloseWithServer(server, sid)
 }
 
-// CloseByServer close specify server and specify sid
-func (s *Srv) CloseByServer(server ServerAdapter, sid string) error {
+// CloseWithServer 关闭指定适配器的指定sid，该方法效率比 Close 高
+func (s *Srv) CloseWithServer(server ServerAdapter, sid string) error {
 	return server.Close(sid)
 }
 
@@ -250,6 +260,23 @@ func (s *Srv) getSidServer(sid string) (ServerAdapter, error) {
 	return nil, errors.New("the sid is destroy")
 }
 
+func (s *Srv) callPushMiddleware(c *Context, resp *Response) *Context {
+	if len(s.pushMiddleware) == 0 {
+		return c
+	}
+	ctx := c.clone()
+	ctx.Response.Cmd = resp.Cmd
+	ctx.Response.Code = resp.Code
+	ctx.Response.Msg = resp.Msg
+	ctx.Response.Data = resp.Data
+	if resp.Seqno != "" {
+		ctx.Response.Seqno = resp.Seqno
+	}
+	ctx.handlers = s.pushMiddleware
+	s.CallContext(ctx)
+	return ctx
+}
+
 // Run 开始接收命令消息，运行框架，会阻塞当前 goroutine
 func (s *Srv) Run() error {
 	mdlLen := len(s.middleware)
@@ -271,8 +298,4 @@ func (s *Srv) Run() error {
 	s.serverMu.Unlock()
 	err := <-s.runErr
 	return err
-	// if err := s.receive(); err != nil {
-	// 	return err
-	// }
-	// return nil
 }

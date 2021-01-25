@@ -147,37 +147,39 @@ func (c *Context) Resp(code int, msg string, data ...interface{}) {
 
 // Push 往当前会话推送消息
 func (c *Context) Push(data *Response) error {
-	data.fill()
-	logger := c.Get(loggerCtxKey)
-	if logger != nil {
-		name, ok := c.Get(loggerNameCtxKey).(string)
-		if !ok {
-			name = "SRV"
-		}
-		logger.(printLogger).Debug(fmt.Sprintf("%s PUSH SID=%s CMD=%s SEQ=%s Code=%d Msg=%s %s",
-			name, c.SID, data.Cmd, data.Seqno, data.Code, data.Msg, getLogDataString(data.Data)))
-	}
-	return c.Srv.PushServer(c.Server, c.SID, data)
+	ctx := c.Srv.callPushMiddleware(c, data)
+	// data.fill()
+	// logger := c.Get(loggerCtxKey)
+	// if logger != nil {
+	// 	name, ok := c.Get(loggerNameCtxKey).(string)
+	// 	if !ok {
+	// 		name = "SRV"
+	// 	}
+	// 	logger.(printLogger).Debug(fmt.Sprintf("%s PUSH SID=%s CMD=%s SEQ=%s Code=%d Msg=%s %s",
+	// 		name, c.SID, data.Cmd, data.Seqno, data.Code, data.Msg, getLogDataString(data.Data)))
+	// }
+	return c.Srv.PushServer(c.Server, c.SID, ctx.Response)
 }
 
 // PushSID 往指定SID会话推送消息
 func (c *Context) PushSID(sid string, data *Response) error {
-	data.fill()
-	logger := c.Get(loggerCtxKey)
-	if logger != nil {
-		name, ok := c.Get(loggerNameCtxKey).(string)
-		if !ok {
-			name = "SRV"
-		}
-		logger.(printLogger).Debug(fmt.Sprintf("%s PUSH SID=%s CMD=%s SEQ=%s Code=%d Msg=%s %s",
-			name, sid, data.Cmd, data.Seqno, data.Code, data.Msg, getLogDataString(data.Data)))
-	}
-	return c.Srv.Push(sid, data)
+	ctx := c.Srv.callPushMiddleware(c, data)
+	// data.fill()
+	// logger := c.Get(loggerCtxKey)
+	// if logger != nil {
+	// 	name, ok := c.Get(loggerNameCtxKey).(string)
+	// 	if !ok {
+	// 		name = "SRV"
+	// 	}
+	// 	logger.(printLogger).Debug(fmt.Sprintf("%s PUSH SID=%s CMD=%s SEQ=%s Code=%d Msg=%s %s",
+	// 		name, sid, data.Cmd, data.Seqno, data.Code, data.Msg, getLogDataString(data.Data)))
+	// }
+	return c.Srv.Push(sid, ctx.Response)
 }
 
 // Close 关闭当前会话连接
 func (c *Context) Close() error {
-	return c.Srv.CloseByServer(c.Server, c.SID)
+	return c.Srv.CloseWithServer(c.Server, c.SID)
 }
 
 // GetAllSID 获取目前生效的所有会话ID
@@ -192,7 +194,35 @@ func (c *Context) GetServerAllSID() []string {
 
 // Broadcast 广播消息，即给所有有效的会话推送消息
 func (c *Context) Broadcast(data *Response) {
-	c.Srv.Broadcast(data)
+	// c.Srv.Broadcast(data)
+	for _, server := range c.Srv.Server {
+		for _, sid := range server.GetAllSID() {
+			ctx := c.Srv.callPushMiddleware(c, data)
+			server.Write(sid, ctx.Response)
+		}
+	}
+}
+
+func (c *Context) clone() *Context {
+	return &Context{
+		Response: &Response{
+			Request: &Request{
+				Cmd:     c.Request.Cmd,
+				Seqno:   c.Request.Seqno,
+				RawData: c.Request.RawData,
+			},
+			Cmd:   c.Cmd,
+			Seqno: c.Seqno,
+			Code:  c.Code,
+			Msg:   c.Msg,
+			Data:  struct{}{},
+		},
+		SID:          c.SID,
+		Srv:          c.Srv,
+		Server:       c.Server,
+		handlers:     c.handlers,
+		handlerIndex: -1,
+	}
 }
 
 // RouteNotFound 当路由没匹配到时的默认处理函数

@@ -41,7 +41,7 @@ func getLogDataString(v interface{}) string {
 // AccessLogger(logger, "MySRV") 设置名称和打日志的实例
 // AccessLogger(logger) 设置打日志的实例
 // AccessLogger(123) 无效参数，不会产生异常，等价于没有参数
-func AccessLogger(args ...interface{}) HandlerFunc {
+func (s *Srv) AccessLogger(args ...interface{}) HandlerFunc {
 	var logger printLogger = consoleLogger{}
 	name := "SRV"
 	for _, v := range args {
@@ -51,6 +51,12 @@ func AccessLogger(args ...interface{}) HandlerFunc {
 			logger = l
 		}
 	}
+
+	s.UsePush(func(c *Context) {
+		logger.Debug(fmt.Sprintf("%s PUSH SID=%s CMD=%s %s", name, c.SID, c.Cmd, getLogDataString(c.Data)))
+		c.Next()
+	})
+
 	return func(c *Context) {
 		if c.Get(loggerCtxKey) == nil {
 			c.Set(loggerCtxKey, logger)
@@ -65,5 +71,6 @@ func AccessLogger(args ...interface{}) HandlerFunc {
 		}
 		logger.Debug(fmt.Sprintf("%s RECV SID=%s CMD=%s SEQ=%s %s", name, c.SID, c.Cmd, c.Seqno, string(c.RawData)))
 		c.Next()
+		logger.Debug(fmt.Sprintf("%s RESP SID=%s CMD=%s SEQ=%s %s", name, c.SID, c.Cmd, c.Seqno, getLogDataString(c.Data)))
 	}
 }

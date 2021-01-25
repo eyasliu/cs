@@ -66,8 +66,8 @@ func TestSrv_MiddlewareCall(t *testing.T) {
 	})
 
 	gtest.C(t, func(t *gtest.T) {
-		srv.Use(cmdsrv.AccessLogger())
-		srv.Use(cmdsrv.AccessLogger(&testAdapter{}, struct{}{}, "SRVNAME"))
+		srv.Use(srv.AccessLogger())
+		srv.Use(srv.AccessLogger(&testAdapter{}, struct{}{}, "SRVNAME"))
 		srv.Use(srv.Heartbeat(10 * time.Millisecond))
 		srv.Use(cmdsrv.Recover())
 		srv.Use(func(c *cmdsrv.Context) {

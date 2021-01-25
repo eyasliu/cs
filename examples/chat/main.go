@@ -26,7 +26,7 @@ func main() {
 	go http.ListenAndServe(":12000", nil)
 
 	srv := cmdsrv.New(httpAdapter, wsAdapter)
-	srv.Use(cmdsrv.AccessLogger("CHAT"))
+	srv.Use(srv.AccessLogger("CHAT"))
 	srv.Use(cmdsrv.Recover())
 
 	srv.Handle("register", func(c *cmdsrv.Context) {
