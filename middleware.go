@@ -1,6 +1,6 @@
 package cmdsrv
 
-func fillPushResp(c *Context) {
+func fillPushResp(c *Context) error {
 	c.Response.fill()
-	c.Next()
+	return nil
 }

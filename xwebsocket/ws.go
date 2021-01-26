@@ -90,7 +90,7 @@ func (ws *WS) Close(sid string) error {
 
 // GetAllSID 实现 cmdsrv.ServerAdapter 接口，获取当前服务所有SID，用于遍历连接
 func (ws *WS) GetAllSID() []string {
-	sids := make([]string, len(ws.session))
+	sids := make([]string, 0, len(ws.session))
 	ws.sessionMu.RLock()
 	for sid := range ws.session {
 		sids = append(sids, sid)

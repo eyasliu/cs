@@ -9,31 +9,40 @@
 
 <body>
     <ul class="pages">
+        <li class="adapter"></li>
         <li class="chat page" v-if="isLogin">
             <div class="chatArea">
                 <ul class="messages">
-                    <li v-for="m in msgs" :class="m.type" >
+                    <li v-for="m in msgs" :class="m.type">
                         <span v-if="m.type == 'log'">{{m.message}}</span>
+                        <span v-else-if="m.type == 'adapter'">
+                            当前通讯方式为: {{adapter == 'ws' ? 'Websocket': "HTTP"}}
+                            <span @click="toggleAdapter" style="color: #597bdc;cursor:pointer;">点击切换为 {{adapter == 'ws'
+                                ? 'HTTP':
+                                "Websocket"}}</span>
+                        </span>
                         <span v-else>
-                            <span class="username" style="color: rgb(167, 0, 255);">{{m.name}}</span>
+                            <span class="username" :style="{color:getColor(m.name)}">{{m.name}}</span>
                             <span class="messageBody">{{m.message}}</span>
                         </span>
                     </li>
                 </ul>
             </div>
-            <input class="inputMessage" v-model="typingMessage" @keypress.enter="sendMessage" placeholder="请输入消息，按回车键发送" />
+            <input class="inputMessage" v-model="typingMessage" @keypress.enter="sendMessage"
+                placeholder="请输入消息，按回车键发送" />
         </li>
         <li class="login page" v-else>
             <div class="form">
                 <h3 class="title">你的名字?</h3>
                 <input class="usernameInput" v-model="name" type="text" maxlength="14" />
-                <p><span>点我击随机生成</span></p>
-                <h4 class="enter" @click="login"><span>进入聊天室</span></h4>
+                <p><span @click="randomName" style="cursor: pointer;">点我击随机生成</span></p>
+                <h4 class="enter" style="cursor: pointer;" @click="login"><span>进入聊天室</span></h4>
             </div>
         </li>
     </ul>
     <!-- <script src="https://unpkg.com/vue@next"></script> -->
     <script src="https://cdn.bootcdn.net/ajax/libs/vue/3.0.2/vue.global.js"></script>
+    <script src="./cssdk.js"></script>
     <script>
         var familyNames = ["赵", "钱", "孙", "李", "周", "吴", "郑", "王", "冯", "陈", "褚", "卫", "蒋", "沈", "韩", "杨", "朱", "秦", "尤", "许", "何", "吕", "施", "张", "孔", "曹", "严", "华", "金", "魏", "陶", "姜", "戚", "谢", "邹", "喻", "柏", "水", "窦", "章", "云", "苏", "潘", "葛", "奚", "范", "彭", "郎", "鲁", "韦", "昌", "马", "苗", "凤", "花", "方", "俞", "任", "袁", "柳", "酆", "鲍", "史", "唐", "费", "廉", "岑", "薛", "雷", "贺", "倪", "汤", "滕", "殷", "罗", "毕", "郝", "邬", "安", "常", "乐", "于", "时", "傅", "皮", "卞", "齐", "康", "伍", "余", "元", "卜", "顾", "孟", "平", "黄", "和", "穆", "萧", "尹"]
         var givenNames = ["子璇", "淼", "国栋", "夫子", "瑞堂", "甜", "敏", "尚", "国贤", "贺祥", "晨涛", "昊轩", "易轩", "益辰", "益帆", "益冉", "瑾春", "瑾昆", "春齐", "杨", "文昊", "东东", "雄霖", "浩晨", "熙涵", "溶溶", "冰枫", "欣欣", "宜豪", "欣慧", "建政", "美欣", "淑慧", "文轩", "文杰", "欣源", "忠林", "榕润", "欣汝", "慧嘉", "新建", "建林", "亦菲", "林", "冰洁", "佳欣", "涵涵", "禹辰", "淳美", "泽惠", "伟洋", "涵越", "润丽", "翔", "淑华", "晶莹", "凌晶", "苒溪", "雨涵", "嘉怡", "佳毅", "子辰", "佳琪", "紫轩", "瑞辰", "昕蕊", "萌", "明远", "欣宜", "泽远", "欣怡", "佳怡", "佳惠", "晨茜", "晨璐", "运昊", "汝鑫", "淑君", "晶滢", "润莎", "榕汕", "佳钰", "佳玉", "晓庆", "一鸣", "语晨", "添池", "添昊", "雨泽", "雅晗", "雅涵", "清妍", "诗悦", "嘉乐", "晨涵", "天赫", "玥傲", "佳昊", "天昊", "萌萌", "若萌"]
@@ -41,11 +50,19 @@
             return familyNames[parseInt((Math.random() * 100)) % familyNames.length] +
                 givenNames[parseInt((Math.random() * 100)) % givenNames.length]
         }
+        const COLORS = [
+            '#e21400', '#91580f', '#f8a700', '#f78b00',
+            '#58dc00', '#287b00', '#a8f07a', '#4ae8c4',
+            '#3b88eb', '#3824aa', '#a700ff', '#d300e7'
+        ]
         var httpUrl = "/http"
         var wsUrl = "ws://" + location.host + "/ws"
         var name = localStorage.getItem("nickname")
+        var through = false
         if (!name || name == 'null') {
             name = randomName()
+        } else {
+            through = true
         }
         var vm = Vue.createApp({
             data() {
@@ -57,114 +74,83 @@
                     typingMessage: "",
                 }
             },
+            computed: {
+                url() { return this.adapter == "http" ? httpUrl : wsUrl }
+            },
             mounted() {
-                if (this.adapter == "http") {
-                    this.initHttp()
-                } else if (this.adapter == "ws") {
-                    this.initWs()
-                }
+                through && this.login()
             },
             methods: {
+                getColor(name) {
+                    return COLORS[name.charCodeAt() % COLORS.length]
+                },
+                randomName() {
+                    this.name = randomName()
+                },
                 login() {
-                    this.register()
+                    this.cs = new CS(this.url)
+                    localStorage.setItem('nickname', this.name)
+                    this.events()
                 },
-                register() {
-                    if (this.adapter == "http") {
-                        fetch
-                    } else if (this.adapter == "ws") {
-                        this.ws.send(JSON.stringify({
-                            cmd: "register",
-                            seqno: Math.random().toString(36).substr(2),
-                            data: {
+                toggleAdapter() {
+                    this.adapter = this.adapter == 'ws' ? httpUrl : wsUrl
+                    this.cs.resetUrl(this.url)
+                },
+                async register() {
+                    await this.cs.send('register', { name: this.name })
+                    this.isLogin = true
+                },
+                async events() {
+                    this.cs.on('cs.connected', e => {
+                        this.isLogin = true
+                        this.msgs.push({
+                            type: 'adapter',
+                        })
+                        this.msgs.push({
+                            type: 'log',
+                            message: this.name + " 已进入聊天室",
+                            name: this.name,
+                        })
+                        this.register()
+                    })
+                    this.cs.on('cs.closed', e => {
+                        if (!this.isLogin) {
+                            this.msgs.push({
+                                type: 'log',
+                                message: "您的网络错误，无法连接服务器",
                                 name: this.name,
-                            }
-                        }))
-                    }
-                    this.isLogin = true
-                },
-                initHttp() {
-                    this.sse = new EventSource(httpUrl)
-                    this.sse.onopen = this.onenter
-                    this.sse.onmessage = e => {
-                        console.log(e)
-                    }
-                    this.sse.addEventListener("push_message", e => {
-                        console.log(e)
-                    })
-                },
-                initWs() {
-                    this.ws = new WebSocket(wsUrl)
-                    this.ws.onopen = this.onenter
-                    this.ws.onclose = this.onleave
-                    this.ws.onmessage = (e) => {
-                        const data = JSON.parse(e.data)
-                        switch (data.cmd) {
-                            case "push_message": 
-                                this.msgs.push({
-                                    type: 'message',
-                                    name: data.data.name,
-                                    message: data.data.message,
-                                })
-                                break;
-                            case "user_online": 
-                                this.msgs.push({
-                                    type: 'log',
-                                    message: data.data.name + " 已上线",
-                                })
-                                break;
-                            case "user_offline":
-                                this.msgs.push({
-                                    type: 'log',
-                                    message: data.data.name + " 已离开",
-                                })
-                                break;
+                            })
+                        } else {
+                            this.msgs.push({
+                                type: 'log',
+                                message: this.name + " 已离开聊天室",
+                                name: this.name,
+                            })
                         }
-                    }
-                },
-                onenter() {
-                    localStorage.setItem("nickname", this.name)
-                    this.isLogin = true
-                    this.msgs.push({
-                        type: 'log',
-                        message: this.name + " 已进入聊天室",
-                        name: this.name,
                     })
-                    this.register()
-                },
-                onleave() {
-                    if (!this.isLogin) {
+                    this.cs.on('push_message', data => {
+                        this.msgs.push({
+                            type: 'message',
+                            name: data.name,
+                            message: data.message,
+                        })
+                    })
+                    this.cs.on('user_online', data => {
                         this.msgs.push({
                             type: 'log',
-                            message: "您的网络错误，无法连接服务器",
-                            name: this.name,
+                            message: data.name + " 已上线",
                         })
-                    } else {
+                    })
+                    this.cs.on('user_offline', data => {
                         this.msgs.push({
                             type: 'log',
-                            message: this.name + " 已离开聊天室",
-                            name: this.name,
+                            message: data.name + " 已离开",
                         })
-                    }
-                    
-                },
-                onRecv() {},
-                async sendMessage() {
-                    var message = JSON.stringify({
-                        cmd:"new_message",
-                        seqno: Math.random().toString(36).substr(2),
-                        data: {
-                            message: this.typingMessage
-                        },
                     })
 
-                    if (this.adapter === "http") {
-                        await fetch(httpUrl, {
-                            method:"POST",
-                            body: message,
-                        })
-                    } else {
-                        await this.ws.send(message)
-                    }
+                },
+                async sendMessage() {
+                    this.cs.send('new_message', { message: this.typingMessage })
                     this.typingMessage = ""
                 }
             }

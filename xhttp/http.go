@@ -29,6 +29,7 @@ var defaultHeartBeatTime = 10 * time.Second
 func New() *HTTP {
 	h := &HTTP{
 		sidKey:  "sid",
+		session: make(map[string][]*SSEConn),
 		receive: make(chan *reqMessage, 2),
 		hbTime:  defaultHeartBeatTime,
 		msgType: SSEEvent,
@@ -86,7 +87,7 @@ func (h *HTTP) Close(sid string) error {
 		return errors.New("ths sid already close")
 	}
 	for _, conn := range conns {
-		conn.destroy()
+		conn.destroy(nil)
 	}
 	h.sessionMu.Lock()
 	delete(h.session, sid)
@@ -95,7 +96,13 @@ func (h *HTTP) Close(sid string) error {
 }
 
 func (h *HTTP) GetAllSID() []string {
-	return []string{}
+	sids := make([]string, 0, len(h.session))
+	h.sessionMu.RLock()
+	for sid := range h.session {
+		sids = append(sids, sid)
+	}
+	h.sessionMu.RUnlock()
+	return sids
 }
 
 func (h *HTTP) setSid(w http.ResponseWriter, req *http.Request) string {
@@ -156,11 +163,8 @@ func (h *HTTP) invokeSSE(sid string, w http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		return
 	}
-	header := w.Header()
-	header.Set("Content-Type", "text/event-stream")
-	header.Set("Cache-Control", "no-cache")
-	header.Set("Connection", "keep-alive")
 	h.sessionMu.Lock()
+
 	conns, ok := h.session[sid]
 	if !ok {
 		conns = []*SSEConn{conn}
@@ -169,4 +173,5 @@ func (h *HTTP) invokeSSE(sid string, w http.ResponseWriter, req *http.Request) {
 	}
 	h.session[sid] = conns
 	h.sessionMu.Unlock()
+	<-conn.notifyErr
 }

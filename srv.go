@@ -16,7 +16,7 @@ type Srv struct {
 	isRunning      bool                     // 服务是否已经正在运行
 	runErr         chan error               // 服务运行错误通知
 	middleware     []HandlerFunc            // 全局路由中间件
-	pushMiddleware []HandlerFunc            // 全局推送中间件
+	pushMiddleware []PushHandlerFunc        // 全局推送中间件
 	routes         map[string][]HandlerFunc // 路由的处理函数
 	state          *State                   // SID 会话的状态数据
 }
@@ -68,7 +68,7 @@ func (s *Srv) Use(handlers ...HandlerFunc) *Srv {
 }
 
 // UsePush 增加推送中间件，该类中间件只会在使用 *Context 服务器主动推送的场景下才会被调用，如 Push, Broadcast, PushSID，在请求-响应模式时不会被调用，使用 ctx.Srv 调用也不会被触发
-func (s *Srv) UsePush(handlers ...HandlerFunc) *Srv {
+func (s *Srv) UsePush(handlers ...PushHandlerFunc) *Srv {
 	s.pushMiddleware = append(s.pushMiddleware, handlers...)
 	return s
 }
@@ -219,15 +219,16 @@ func (s *Srv) startServer(server ServerAdapter) {
 		go func(sid string, req *Request) {
 			ctx := s.NewContext(server, sid, req)
 
+			s.CallContext(ctx) // 为什么会卡死在这不回复
+
 			// internal will not response
 			if req.Cmd != CmdConnected &&
 				req.Cmd != CmdClosed &&
 				req.Cmd != CmdHeartbeat {
-				defer func() {
-					ctx.Push(ctx.Response)
-				}()
+
+				s.PushServer(server, sid, ctx.Response)
+
 			}
-			s.CallContext(ctx)
 
 			// call internal hooks
 			switch req.Cmd {
@@ -260,21 +261,24 @@ func (s *Srv) getSidServer(sid string) (ServerAdapter, error) {
 	return nil, errors.New("the sid is destroy")
 }
 
-func (s *Srv) callPushMiddleware(c *Context, resp *Response) *Context {
+func (s *Srv) callPushMiddleware(c *Context, resp *Response) (*Context, error) {
 	if len(s.pushMiddleware) == 0 {
-		return c
+		return c, nil
 	}
 	ctx := c.clone()
 	ctx.Response.Cmd = resp.Cmd
 	ctx.Response.Code = resp.Code
 	ctx.Response.Msg = resp.Msg
 	ctx.Response.Data = resp.Data
-	if resp.Seqno != "" {
-		ctx.Response.Seqno = resp.Seqno
+	ctx.Response.Seqno = randomString(12)
+
+	for _, h := range s.pushMiddleware {
+		if err := h(ctx); err != nil {
+			return nil, err
+		}
 	}
-	ctx.handlers = s.pushMiddleware
-	s.CallContext(ctx)
-	return ctx
+
+	return ctx, nil
 }
 
 // Run 开始接收命令消息，运行框架，会阻塞当前 goroutine

@@ -11,6 +11,8 @@ import (
 // HandlerFunc 消息处理函数，中间件和路由的函数签名
 type HandlerFunc = func(*Context)
 
+type PushHandlerFunc = func(*Context) error
+
 // Context 处理函数的的上下文对象，中间件和路由的函数参数
 type Context struct {
 	*Response
@@ -147,7 +149,10 @@ func (c *Context) Resp(code int, msg string, data ...interface{}) {
 
 // Push 往当前会话推送消息
 func (c *Context) Push(data *Response) error {
-	ctx := c.Srv.callPushMiddleware(c, data)
+	ctx, err := c.Srv.callPushMiddleware(c, data)
+	if err != nil {
+		return err
+	}
 	// data.fill()
 	// logger := c.Get(loggerCtxKey)
 	// if logger != nil {
@@ -163,7 +168,10 @@ func (c *Context) Push(data *Response) error {
 
 // PushSID 往指定SID会话推送消息
 func (c *Context) PushSID(sid string, data *Response) error {
-	ctx := c.Srv.callPushMiddleware(c, data)
+	ctx, err := c.Srv.callPushMiddleware(c, data)
+	if err != nil {
+		return err
+	}
 	// data.fill()
 	// logger := c.Get(loggerCtxKey)
 	// if logger != nil {
@@ -197,8 +205,10 @@ func (c *Context) Broadcast(data *Response) {
 	// c.Srv.Broadcast(data)
 	for _, server := range c.Srv.Server {
 		for _, sid := range server.GetAllSID() {
-			ctx := c.Srv.callPushMiddleware(c, data)
-			server.Write(sid, ctx.Response)
+			ctx, err := c.Srv.callPushMiddleware(c, data)
+			if err == nil {
+				go server.Write(sid, ctx.Response)
+			}
 		}
 	}
 }
@@ -220,7 +230,7 @@ func (c *Context) clone() *Context {
 		SID:          c.SID,
 		Srv:          c.Srv,
 		Server:       c.Server,
-		handlers:     c.handlers,
+		handlers:     nil,
 		handlerIndex: -1,
 	}
 }

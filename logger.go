@@ -52,9 +52,9 @@ func (s *Srv) AccessLogger(args ...interface{}) HandlerFunc {
 		}
 	}
 
-	s.UsePush(func(c *Context) {
+	s.UsePush(func(c *Context) error {
 		logger.Debug(fmt.Sprintf("%s PUSH SID=%s CMD=%s %s", name, c.SID, c.Cmd, getLogDataString(c.Data)))
-		c.Next()
+		return nil
 	})
 
 	return func(c *Context) {

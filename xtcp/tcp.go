@@ -97,7 +97,7 @@ func (t *TCP) Close(sid string) error {
 
 // GetAllSID 实现 cmdsrv.ServerAdapter 接口，获取当前服务所有SID，用于遍历连接
 func (t *TCP) GetAllSID() []string {
-	sids := make([]string, len(t.session))
+	sids := make([]string, 0, len(t.session))
 	t.sessionMu.RLock()
 	for sid := range t.session {
 		sids = append(sids, sid)
