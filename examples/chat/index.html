@@ -3,21 +3,20 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>Socket.IO Chat Example</title>
+    <title>CmdSrv Chat Demo</title>
     <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
     <ul class="pages">
-        <li class="adapter"></li>
         <li class="chat page" v-if="isLogin">
             <div class="chatArea">
                 <ul class="messages">
                     <li v-for="m in msgs" :class="m.type">
                         <span v-if="m.type == 'log'">{{m.message}}</span>
                         <span v-else-if="m.type == 'adapter'">
-                            当前通讯方式为: {{adapter == 'ws' ? 'Websocket': "HTTP"}}
-                            <span @click="toggleAdapter" style="color: #597bdc;cursor:pointer;">点击切换为 {{adapter == 'ws'
+                            当前通讯方式为: {{m.message == 'ws' ? 'Websocket': "HTTP"}}
+                            <span @click="toggleAdapter" style="color: #597bdc;cursor:pointer;">点击切换为 {{m.message == 'ws'
                                 ? 'HTTP':
                                 "Websocket"}}</span>
                         </span>
@@ -50,13 +49,10 @@
             return familyNames[parseInt((Math.random() * 100)) % familyNames.length] +
                 givenNames[parseInt((Math.random() * 100)) % givenNames.length]
         }
-        const COLORS = [
-            '#e21400', '#91580f', '#f8a700', '#f78b00',
-            '#58dc00', '#287b00', '#a8f07a', '#4ae8c4',
-            '#3b88eb', '#3824aa', '#a700ff', '#d300e7'
-        ]
+        const COLORS = [ '#e21400', '#91580f', '#f8a700', '#f78b00', '#58dc00', '#287b00', '#a8f07a', '#4ae8c4', '#3b88eb', '#3824aa', '#a700ff', '#d300e7' ]
         var httpUrl = "/http"
         var wsUrl = "ws://" + location.host + "/ws"
+        var adapter = localStorage.getItem('adapter')
         var name = localStorage.getItem("nickname")
         var through = false
         if (!name || name == 'null') {
@@ -67,7 +63,7 @@
         var vm = Vue.createApp({
             data() {
                 return {
-                    adapter: "ws",
+                    adapter: adapter || "ws",
                     name: name,
                     msgs: [],
                     isLogin: false,
@@ -93,8 +89,9 @@
                     this.events()
                 },
                 toggleAdapter() {
-                    this.adapter = this.adapter == 'ws' ? httpUrl : wsUrl
+                    this.adapter = this.adapter == 'ws' ? 'http' : 'ws'
                     this.cs.resetUrl(this.url)
+                    localStorage.setItem('adapter', this.adapter)
                 },
                 async register() {
                     await this.cs.send('register', { name: this.name })
@@ -105,6 +102,7 @@
                         this.isLogin = true
                         this.msgs.push({
                             type: 'adapter',
+                            message: this.adapter,
                         })
                         this.msgs.push({
                             type: 'log',

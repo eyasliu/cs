@@ -41,14 +41,25 @@
       this.url = url;
       this.sendTimeout = 10000;
       this._progress = new Map();
-      this._ins = this._init();
-      this._events();
+      this._init();
     }
     get adapterName() {
       if (this.url.indexOf('ws') === 0) {
         return 'ws'
       }
       return 'http'
+    }
+    async resetUrl(url) {
+      this.destroy();
+      this.url = url;
+      this._init();
+    }
+    destroy() {
+      if (!this.adapter) {
+        return
+      }
+      this.adapter.close();
+      this.adapter = null;
     }
     async send(cmd, data) {
       const body = { cmd, data };
@@ -76,19 +87,26 @@
       return resp.data
     }
     _init() {
-      if (this.adapterName === 'ws') {
-        // return new WS(this.url)
-        return this._initWs()
+      if (this.adapter) {
+        this.destroy();
       }
-      // return new HTTP(this.url)
-      return this._initHttp()
+
+      if (this.adapterName === 'ws') {
+        this.adapter = this._initWs();
+      } else {
+        this.adapter = this._initHttp();
+      }
+      this._events();
     }
     _initWs() {
-      this.adapter = new WebSocket(this.url);
-
+      const ws = new WebSocket(this.url);
+      ws.addEventListener('close', e => {
+        console.log(e);
+      });
+      return ws
     }
     _initHttp() {
-      this.adapter = new EventSource(this.url);
+      return new EventSource(this.url)
     }
     _events() {
       this.adapter.onopen = e => {
@@ -96,6 +114,10 @@
       };
       this.adapter.onclose = e => {
         this.emit('cs.closed', e);
+        // sse 在浏览器自己会自动重连，websocket 需要手动触发重连
+        if (this.adapterName === 'ws') {
+          setTimeout(this._init.bind(this), 100);
+        }
       };
       this.adapter.onmessage = this._onMessage.bind(this);
     }

@@ -53,6 +53,10 @@ class CS extends Emit {
     return resp.data
   }
   _init() {
+    if (this.adapter) {
+      this.destroy()
+    }
+
     if (this.adapterName === 'ws') {
       this.adapter = this._initWs()
     } else {
@@ -61,7 +65,11 @@ class CS extends Emit {
     this._events()
   }
   _initWs() {
-    return new WebSocket(this.url)
+    const ws = new WebSocket(this.url)
+    ws.addEventListener('close', e => {
+      console.log(e)
+    })
+    return ws
   }
   _initHttp() {
     return new EventSource(this.url)
@@ -72,6 +80,10 @@ class CS extends Emit {
     }
     this.adapter.onclose = e => {
       this.emit('cs.closed', e)
+      // sse 在浏览器自己会自动重连，websocket 需要手动触发重连
+      if (this.adapterName === 'ws') {
+        setTimeout(this._init.bind(this), 100)
+      }
     }
     this.adapter.onmessage = this._onMessage.bind(this)
   }
