@@ -1,3 +1,5 @@
+// +build !race test
+
 package xhttp_test
 
 import (
