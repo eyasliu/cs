@@ -180,7 +180,7 @@ func (h *HTTP) invokeSSE(sid string, w http.ResponseWriter, req *http.Request) {
 	if !ok {
 		return
 	}
-	nextConns := make([]*SSEConn, 0, len(conns) - 1)
+	nextConns := make([]*SSEConn, 0, len(conns)-1)
 	for _, c := range conns {
 		if c != conn {
 			nextConns = append(nextConns, c)
