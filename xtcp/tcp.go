@@ -8,7 +8,7 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/eyasliu/cmdsrv"
+	"github.com/eyasliu/cs"
 )
 
 // TCP 适配器
@@ -63,17 +63,17 @@ func New(v interface{}) *TCP {
 }
 
 // Srv 使用该适配器创建命令消息服务
-func (t *TCP) Srv() (*cmdsrv.Srv, error) {
+func (t *TCP) Srv() (*cs.Srv, error) {
 	err := t.listen()
 	if err != nil {
 		return nil, err
 	}
 	go t.accept()
-	return cmdsrv.New(t), nil
+	return cs.New(t), nil
 }
 
-// Read 实现 cmdsrv.ServerAdapter 接口，读取消息，每次返回一条，循环读取
-func (t *TCP) Read(s *cmdsrv.Srv) (string, *cmdsrv.Request, error) {
+// Read 实现 cs.ServerAdapter 接口，读取消息，每次返回一条，循环读取
+func (t *TCP) Read(s *cs.Srv) (string, *cs.Request, error) {
 	m, ok := <-t.receive
 	if !ok {
 		return "", nil, errors.New("websocker server is shutdown")
@@ -81,8 +81,8 @@ func (t *TCP) Read(s *cmdsrv.Srv) (string, *cmdsrv.Request, error) {
 	return m.sid, m.data, nil
 }
 
-// Write 实现 cmdsrv.ServerAdapter 接口，给连接推送消息
-func (t *TCP) Write(sid string, resp *cmdsrv.Response) error {
+// Write 实现 cs.ServerAdapter 接口，给连接推送消息
+func (t *TCP) Write(sid string, resp *cs.Response) error {
 	conn, ok := t.session[sid]
 	if !ok {
 		return errors.New("connection is already close")
@@ -90,12 +90,12 @@ func (t *TCP) Write(sid string, resp *cmdsrv.Response) error {
 	return conn.Send(resp)
 }
 
-// Close 实现 cmdsrv.ServerAdapter 接口，关闭指定连接
+// Close 实现 cs.ServerAdapter 接口，关闭指定连接
 func (t *TCP) Close(sid string) error {
 	return t.destroyConn(sid)
 }
 
-// GetAllSID 实现 cmdsrv.ServerAdapter 接口，获取当前服务所有SID，用于遍历连接
+// GetAllSID 实现 cs.ServerAdapter 接口，获取当前服务所有SID，用于遍历连接
 func (t *TCP) GetAllSID() []string {
 	sids := make([]string, 0, len(t.session))
 	t.sessionMu.RLock()
@@ -145,8 +145,8 @@ func (t *TCP) newConn(sid string, netconn net.Conn) {
 	t.session[sid] = conn
 	t.sessionMu.Unlock()
 	t.receive <- &reqMessage{
-		data: &cmdsrv.Request{
-			Cmd: cmdsrv.CmdConnected,
+		data: &cs.Request{
+			Cmd: cs.CmdConnected,
 		},
 		sid: sid,
 	}
@@ -164,8 +164,8 @@ func (t *TCP) newConn(sid string, netconn net.Conn) {
 		for _, payload := range payloads {
 
 			if len(payload) == 0 { // heartbeat
-				t.receive <- &reqMessage{data: &cmdsrv.Request{
-					Cmd: cmdsrv.CmdHeartbeat,
+				t.receive <- &reqMessage{data: &cs.Request{
+					Cmd: cs.CmdHeartbeat,
 				}, sid: sid}
 				continue
 			}
@@ -173,7 +173,7 @@ func (t *TCP) newConn(sid string, netconn net.Conn) {
 			if err = json.Unmarshal(payload, r); err != nil {
 				continue
 			}
-			t.receive <- &reqMessage{data: &cmdsrv.Request{
+			t.receive <- &reqMessage{data: &cs.Request{
 				Cmd:     r.Cmd,
 				Seqno:   r.Seqno,
 				RawData: r.Data,
@@ -195,8 +195,8 @@ func (t *TCP) destroyConn(sid string) error {
 		return err
 	}
 	t.receive <- &reqMessage{
-		data: &cmdsrv.Request{
-			Cmd: cmdsrv.CmdClosed,
+		data: &cs.Request{
+			Cmd: cs.CmdClosed,
 		},
 		sid: sid,
 	}

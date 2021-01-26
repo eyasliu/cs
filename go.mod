@@ -1,4 +1,4 @@
-module github.com/eyasliu/cmdsrv
+module github.com/eyasliu/cs
 
 go 1.12
 

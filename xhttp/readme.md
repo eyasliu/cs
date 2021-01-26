@@ -1,4 +1,4 @@
-# cmdsrv http
+# cs http
 
 HTTP 适配器，该适配器支持请求响应模式，服务端推送使用 SSE(Server-Sent Event)，所以需要客户端支持，会话 sid 使用 cookie 做保持
 
@@ -17,7 +17,7 @@ HTTP 适配器，该适配器支持请求响应模式，服务端推送使用 SS
 }
 ```
 
- * cmd 表示命令名，对应 cmdsrv 的路由
+ * cmd 表示命令名，对应 cs 的路由
  * seqno 表示该请求的唯一标识，在响应中会原样返回
  * data 表示请求数据，可以是任意值，如 string, number, object, array, null
 
@@ -48,8 +48,8 @@ HTTP 适配器，该适配器支持请求响应模式，服务端推送使用 SS
 ```go
 import (
   "net/http"
-  "github.com/eyasliu/cmdsrv"
-  "github.com/eyasliu/cmdsrv/xhttp"
+  "github.com/eyasliu/cs"
+  "github.com/eyasliu/cs/xhttp"
 )
 
 func main() {

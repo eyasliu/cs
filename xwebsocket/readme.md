@@ -1,4 +1,4 @@
-# cmdsrv websocket
+# cs websocket
 
 Websocket 的适配器实现
 
@@ -15,7 +15,7 @@ Websocket 的适配器实现
 }
 ```
 
- * cmd 表示命令名，对应 cmdsrv 的路由
+ * cmd 表示命令名，对应 cs 的路由
  * seqno 表示该请求的唯一标识，在响应中会原样返回
  * data 表示请求数据，可以是任意值，如 string, number, object, array, null
 
@@ -42,12 +42,12 @@ Websocket 的适配器实现
 ## 使用示例
 
  1. 实例化完成后挂载到路由中
- 2. 生成 cmdsrv 实例
+ 2. 生成 cs 实例
 
 ```go
 import (
   "net/http"
-  "github.com/eyasliu/cmdsrv/xwebsocket"
+  "github.com/eyasliu/cs/xwebsocket"
 )
 
 func main() {
@@ -69,7 +69,7 @@ package main
 import (
   "github.com/gogf/gf/frame/g"
   "github.com/gogf/gf/net/ghttp"
-  "github.com/eyasliu/cmdsrv/xwebsocket"
+  "github.com/eyasliu/cs/xwebsocket"
 )
 
 func main() {
@@ -90,7 +90,7 @@ func main() {
 package main
 import (
   "github.com/gin-gonic/gin"
-  "github.com/eyasliu/cmdsrv/xwebsocket"
+  "github.com/eyasliu/cs/xwebsocket"
 )
 
 func main() {
@@ -111,7 +111,7 @@ func main() {
 package main
 import (
   "github.com/labstack/echo/v4"
-  "github.com/eyasliu/cmdsrv/xwebsocket"
+  "github.com/eyasliu/cs/xwebsocket"
 )
 
 func main() {

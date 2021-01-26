@@ -4,9 +4,9 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/eyasliu/cmdsrv"
-	"github.com/eyasliu/cmdsrv/xhttp"
-	"github.com/eyasliu/cmdsrv/xwebsocket"
+	"github.com/eyasliu/cs"
+	"github.com/eyasliu/cs/xhttp"
+	"github.com/eyasliu/cs/xwebsocket"
 )
 
 func assert(err error) {
@@ -25,11 +25,11 @@ func main() {
 
 	go http.ListenAndServe(":12000", nil)
 
-	srv := cmdsrv.New(httpAdapter, wsAdapter)
+	srv := cs.New(httpAdapter, wsAdapter)
 	srv.Use(srv.AccessLogger("CHAT"))
-	srv.Use(cmdsrv.Recover())
+	srv.Use(cs.Recover())
 
-	srv.Handle("register", func(c *cmdsrv.Context) {
+	srv.Handle("register", func(c *cs.Context) {
 		var body struct {
 			Name string `p:"name" v:"required#名称必填" json:"name"`
 		}
@@ -37,19 +37,19 @@ func main() {
 
 		c.Set("name", body.Name)
 
-		c.Push(&cmdsrv.Response{
+		c.Push(&cs.Response{
 			Cmd:  "welcome",
 			Data: "welcome " + body.Name + " to my chat room",
 		})
 
-		c.Broadcast(&cmdsrv.Response{
+		c.Broadcast(&cs.Response{
 			Cmd:  "user_online",
 			Data: body,
 		})
 		// c.OK()
 	})
 
-	user := srv.Group(func(c *cmdsrv.Context) {
+	user := srv.Group(func(c *cs.Context) {
 		if c.Get("name") == nil {
 			c.Abort()
 			c.Err(errors.New("you are not login"), 101)
@@ -57,7 +57,7 @@ func main() {
 		}
 		c.Next()
 	})
-	user.Handle("new_message", func(c *cmdsrv.Context) {
+	user.Handle("new_message", func(c *cs.Context) {
 		var body struct {
 			Message string `v:"required#消息不能为空"`
 		}
@@ -69,7 +69,7 @@ func main() {
 			"name":    name,
 			"message": body.Message,
 		}
-		pushMsg := &cmdsrv.Response{
+		pushMsg := &cs.Response{
 			Cmd:  "push_message",
 			Data: msg,
 		}
@@ -77,16 +77,16 @@ func main() {
 			if c.GetState(sid, "name") != nil {
 				c.PushSID(sid, pushMsg)
 			} else {
-				c.PushSID(sid, &cmdsrv.Response{
+				c.PushSID(sid, &cs.Response{
 					Cmd: "hide_message",
 				})
 			}
 		}
 	})
-	user.Handle(cmdsrv.CmdClosed, func(c *cmdsrv.Context) {
+	user.Handle(cs.CmdClosed, func(c *cs.Context) {
 		for _, sid := range c.GetAllSID() {
 			if c.GetState(sid, "name") != nil {
-				c.PushSID(sid, &cmdsrv.Response{
+				c.PushSID(sid, &cs.Response{
 					Cmd: "user_offline",
 					Data: map[string]interface{}{
 						"name": c.Get("name"),

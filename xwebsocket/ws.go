@@ -9,7 +9,7 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/eyasliu/cmdsrv"
+	"github.com/eyasliu/cs"
 
 	"github.com/gorilla/websocket"
 )
@@ -23,7 +23,7 @@ type WS struct {
 	sidCount  uint32
 }
 
-var _ cmdsrv.ServerAdapter = &WS{}
+var _ cs.ServerAdapter = &WS{}
 
 // New 实例化 websocket 适配器
 func New() *WS {
@@ -38,8 +38,8 @@ func New() *WS {
 }
 
 // Srv 使用该适配器创建命令消息服务
-func (ws *WS) Srv() *cmdsrv.Srv {
-	return cmdsrv.New(ws)
+func (ws *WS) Srv() *cs.Srv {
+	return cs.New(ws)
 }
 
 // Handler impl http.HandlerFunc to upgrade to websocket protocol
@@ -63,8 +63,8 @@ func (ws *WS) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	ws.Handler(w, req)
 }
 
-// Read 实现 cmdsrv.ServerAdapter 接口，读取消息，每次返回一条，循环读取
-func (ws *WS) Read(s *cmdsrv.Srv) (string, *cmdsrv.Request, error) {
+// Read 实现 cs.ServerAdapter 接口，读取消息，每次返回一条，循环读取
+func (ws *WS) Read(s *cs.Srv) (string, *cs.Request, error) {
 	m, ok := <-ws.receive
 	if !ok {
 		return "", nil, errors.New("websocker server is shutdown")
@@ -72,8 +72,8 @@ func (ws *WS) Read(s *cmdsrv.Srv) (string, *cmdsrv.Request, error) {
 	return m.sid, m.data, nil
 }
 
-// Write 实现 cmdsrv.ServerAdapter 接口，给连接推送消息
-func (ws *WS) Write(sid string, resp *cmdsrv.Response) error {
+// Write 实现 cs.ServerAdapter 接口，给连接推送消息
+func (ws *WS) Write(sid string, resp *cs.Response) error {
 	ws.sessionMu.RLock()
 	conn, ok := ws.session[sid]
 	ws.sessionMu.RUnlock()
@@ -83,12 +83,12 @@ func (ws *WS) Write(sid string, resp *cmdsrv.Response) error {
 	return conn.Send(resp)
 }
 
-// Close 实现 cmdsrv.ServerAdapter 接口，关闭指定连接
+// Close 实现 cs.ServerAdapter 接口，关闭指定连接
 func (ws *WS) Close(sid string) error {
 	return ws.destroyConn(sid)
 }
 
-// GetAllSID 实现 cmdsrv.ServerAdapter 接口，获取当前服务所有SID，用于遍历连接
+// GetAllSID 实现 cs.ServerAdapter 接口，获取当前服务所有SID，用于遍历连接
 func (ws *WS) GetAllSID() []string {
 	sids := make([]string, 0, len(ws.session))
 	ws.sessionMu.RLock()
@@ -106,8 +106,8 @@ func (ws *WS) newConn(sid string, conn *websocket.Conn) {
 		Conn: conn,
 	}
 	ws.sessionMu.Unlock()
-	ws.receive <- &reqMessage{msgType: websocket.TextMessage, data: &cmdsrv.Request{
-		Cmd: cmdsrv.CmdConnected,
+	ws.receive <- &reqMessage{msgType: websocket.TextMessage, data: &cs.Request{
+		Cmd: cs.CmdConnected,
 	}, sid: sid}
 	for {
 		messageType, payload, err := conn.ReadMessage()
@@ -117,8 +117,8 @@ func (ws *WS) newConn(sid string, conn *websocket.Conn) {
 		}
 
 		if len(payload) == 0 { // heartbeat
-			ws.receive <- &reqMessage{msgType: messageType, data: &cmdsrv.Request{
-				Cmd: cmdsrv.CmdHeartbeat,
+			ws.receive <- &reqMessage{msgType: messageType, data: &cs.Request{
+				Cmd: cs.CmdHeartbeat,
 			}, sid: sid}
 			continue
 		}
@@ -126,7 +126,7 @@ func (ws *WS) newConn(sid string, conn *websocket.Conn) {
 		if err = json.Unmarshal(payload, r); err != nil {
 			continue
 		}
-		ws.receive <- &reqMessage{msgType: messageType, data: &cmdsrv.Request{
+		ws.receive <- &reqMessage{msgType: messageType, data: &cs.Request{
 			Cmd:     r.Cmd,
 			Seqno:   r.Seqno,
 			RawData: r.Data,
@@ -146,8 +146,8 @@ func (ws *WS) destroyConn(sid string) error {
 	if err != nil {
 		return err
 	}
-	ws.receive <- &reqMessage{msgType: websocket.TextMessage, data: &cmdsrv.Request{
-		Cmd: cmdsrv.CmdClosed,
+	ws.receive <- &reqMessage{msgType: websocket.TextMessage, data: &cs.Request{
+		Cmd: cs.CmdClosed,
 	}, sid: sid}
 	ws.sessionMu.Lock()
 	delete(ws.session, sid)

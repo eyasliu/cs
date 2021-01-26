@@ -1,4 +1,4 @@
-package cmdsrv
+package cs
 
 // SrvGroup 路由组，用于实现分组路由
 type SrvGroup struct {

@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/eyasliu/cmdsrv"
-	"github.com/eyasliu/cmdsrv/xwebsocket"
+	"github.com/eyasliu/cs"
+	"github.com/eyasliu/cs/xwebsocket"
 	"github.com/gogf/gf/test/gtest"
 	"github.com/gorilla/websocket"
 )
@@ -53,7 +53,7 @@ func TestWS(t *testing.T) {
 			"seqno": "12345",
 			"data":  "asdfgh",
 		}
-		srv.Handle(data["cmd"].(string), func(c *cmdsrv.Context) {
+		srv.Handle(data["cmd"].(string), func(c *cs.Context) {
 			c.OK(c.RawData)
 		})
 
@@ -84,9 +84,9 @@ func ExampleNew() {
 
 	srv := ws.Srv()
 	srv.Use(srv.AccessLogger("MYSRV")). // 打印请求响应日志
-						Use(cmdsrv.Recover()) // 统一错误处理，消化 panic 错误
+						Use(cs.Recover()) // 统一错误处理，消化 panic 错误
 
-	srv.Handle("register", func(c *cmdsrv.Context) {
+	srv.Handle("register", func(c *cs.Context) {
 		// 定义请求数据
 		var body struct {
 			UID  int    `p:"uid" v:"required"`
@@ -107,13 +107,13 @@ func ExampleNew() {
 		})
 
 		// 给所有连接广播消息
-		c.Broadcast(&cmdsrv.Response{
+		c.Broadcast(&cs.Response{
 			Cmd:  "someone_online",
 			Data: body,
 		})
 
 		// 往当前连接主动推送消息
-		c.Push(&cmdsrv.Response{
+		c.Push(&cs.Response{
 			Cmd:  "welcome",
 			Data: "welcome to register my server",
 		})
@@ -121,7 +121,7 @@ func ExampleNew() {
 		// 遍历所有在线会话，获取其他会话的状态，并往指定会话推送消息
 		for _, sid := range c.GetAllSID() {
 			if c.Srv.GetState(sid, "uid") != nil {
-				c.Srv.Push(sid, &cmdsrv.Response{
+				c.Srv.Push(sid, &cs.Response{
 					Cmd:  "firend_online",
 					Data: "your firend is online",
 				})
@@ -130,7 +130,7 @@ func ExampleNew() {
 	})
 
 	// 分组
-	group := srv.Group(func(c *cmdsrv.Context) {
+	group := srv.Group(func(c *cs.Context) {
 		// 过滤指定请求
 		if _, ok := c.Get("uid").(int); !ok {
 			c.Err(errors.New("unregister session"), 101)
@@ -139,7 +139,7 @@ func ExampleNew() {
 		c.Next()
 	})
 
-	group.Handle("userinfo", func(c *cmdsrv.Context) {
+	group.Handle("userinfo", func(c *cs.Context) {
 		uid := c.Get("uid").(int) // 中间件已处理过，可大胆断言
 		c.OK(map[string]interface{}{
 			"uid": uid,

@@ -5,7 +5,7 @@ import (
 	"net"
 	"sync"
 
-	"github.com/eyasliu/cmdsrv"
+	"github.com/eyasliu/cs"
 )
 
 // Conn tcp 连接对象
@@ -17,7 +17,7 @@ type Conn struct {
 }
 
 // Send 往连接推送消息，线程安全
-func (c *Conn) Send(v ...*cmdsrv.Response) error {
+func (c *Conn) Send(v ...*cs.Response) error {
 	if len(v) == 0 {
 		return nil
 	}

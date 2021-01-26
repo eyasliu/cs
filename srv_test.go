@@ -1,4 +1,4 @@
-package cmdsrv_test
+package cs_test
 
 import (
 	"errors"
@@ -7,19 +7,19 @@ import (
 	"testing"
 	"time"
 
-	"github.com/eyasliu/cmdsrv"
+	"github.com/eyasliu/cs"
 	"github.com/gogf/gf/test/gtest"
 )
 
 type testAdapter struct {
 	sid      string
-	request  []*cmdsrv.Request
-	response []*cmdsrv.Response
+	request  []*cs.Request
+	response []*cs.Response
 	state    map[string]interface{}
 	stateMu  sync.RWMutex
 }
 
-func (a *testAdapter) Read(r *cmdsrv.Srv) (string, *cmdsrv.Request, error) {
+func (a *testAdapter) Read(r *cs.Srv) (string, *cs.Request, error) {
 	if len(a.request) > 0 {
 		m := a.request[0]
 		a.request = a.request[1:len(a.request)]
@@ -27,7 +27,7 @@ func (a *testAdapter) Read(r *cmdsrv.Srv) (string, *cmdsrv.Request, error) {
 	}
 	return "", nil, errors.New("req empty")
 }
-func (*testAdapter) Write(sid string, resp *cmdsrv.Response) error {
+func (*testAdapter) Write(sid string, resp *cs.Response) error {
 	return nil
 }
 func (*testAdapter) Close(sid string) error {
@@ -54,8 +54,8 @@ func (a *testAdapter) Debug(v ...interface{}) {
 }
 
 func TestSrv_MiddlewareCall(t *testing.T) {
-	srv := cmdsrv.New(&testAdapter{
-		request: []*cmdsrv.Request{
+	srv := cs.New(&testAdapter{
+		request: []*cs.Request{
 			{"a", "", nil},
 			{"b", "", nil},
 			{"c", "", nil},
@@ -67,8 +67,8 @@ func TestSrv_MiddlewareCall(t *testing.T) {
 		srv.Use(srv.AccessLogger())
 		srv.Use(srv.AccessLogger(&testAdapter{}, struct{}{}, "SRVNAME"))
 		srv.Use(srv.Heartbeat(10 * time.Millisecond))
-		srv.Use(cmdsrv.Recover())
-		srv.Use(func(c *cmdsrv.Context) {
+		srv.Use(cs.Recover())
+		srv.Use(func(c *cs.Context) {
 			c.Seqno = "a"
 			c.Next()
 			c.Seqno += "b"
@@ -82,42 +82,42 @@ func TestSrv_MiddlewareCall(t *testing.T) {
 			case "d":
 				t.Assert(c.Seqno, "aceijfdb")
 			}
-		}, func(c *cmdsrv.Context) {
+		}, func(c *cs.Context) {
 			c.Seqno += "c"
 			c.Next()
 			c.Seqno += "d"
 		})
 
-		srv.Handle("a", func(c *cmdsrv.Context) {
+		srv.Handle("a", func(c *cs.Context) {
 			t.Assert(c.Seqno, "ac")
 			t.Assert(c.Cmd, "a")
 		})
 
-		srvG1 := srv.Group(func(c *cmdsrv.Context) {
+		srvG1 := srv.Group(func(c *cs.Context) {
 			c.Seqno += "e"
 			c.Next()
 			c.Seqno += "f"
 		})
-		srvG1.Handle("b", func(c *cmdsrv.Context) {
+		srvG1.Handle("b", func(c *cs.Context) {
 			t.Assert(c.Seqno, "ace")
 			t.Assert(c.Cmd, "b")
 		})
 
-		srvG2 := srvG1.Group(func(c *cmdsrv.Context) {
+		srvG2 := srvG1.Group(func(c *cs.Context) {
 			c.Seqno += "g"
 			c.Next()
 			c.Seqno += "h"
 		})
-		srvG2.Handle("c", func(c *cmdsrv.Context) {
+		srvG2.Handle("c", func(c *cs.Context) {
 			t.Assert(c.Seqno, "aceg")
 			t.Assert(c.Cmd, "c")
 		})
-		srvG3 := srvG1.Group(func(c *cmdsrv.Context) {
+		srvG3 := srvG1.Group(func(c *cs.Context) {
 			c.Seqno += "i"
 			c.Next()
 			c.Seqno += "j"
 		})
-		srvG3.Handle("d", func(c *cmdsrv.Context) {
+		srvG3.Handle("d", func(c *cs.Context) {
 			t.Assert(c.Seqno, "acei")
 			t.Assert(c.Cmd, "d")
 			panic("test panic recover")
@@ -129,14 +129,14 @@ func TestSrv_MiddlewareCall(t *testing.T) {
 }
 
 func TestSrv_Parse(t *testing.T) {
-	srv := cmdsrv.New(&testAdapter{
-		request: []*cmdsrv.Request{
+	srv := cs.New(&testAdapter{
+		request: []*cs.Request{
 			{"a", "1", []byte(`{"x":1}`)},
 			{"b", "2", []byte(`[{"y":2},{"z":3}]`)},
 		},
 	})
 	gtest.C(t, func(t *gtest.T) {
-		srv.Handle("a", func(c *cmdsrv.Context) {
+		srv.Handle("a", func(c *cs.Context) {
 			var body *struct {
 				Y int `p:"x"`
 			}
@@ -159,7 +159,7 @@ func TestSrv_Parse(t *testing.T) {
 			t.AssertNE(body3, nil)
 			t.Assert(body3["x"], 1)
 		})
-		srv.Handle("b", func(c *cmdsrv.Context) {
+		srv.Handle("b", func(c *cs.Context) {
 			var body []struct {
 				Y int
 				Z int
@@ -182,24 +182,24 @@ func TestSrv_Parse(t *testing.T) {
 }
 func TestSrv_Response(t *testing.T) {
 	server1 := &testAdapter{
-		request: []*cmdsrv.Request{
-			{cmdsrv.CmdConnected, "", nil},
+		request: []*cs.Request{
+			{cs.CmdConnected, "", nil},
 			{"a", "", nil},
 			{"b", "", nil},
 			{"c", "", nil},
-			{cmdsrv.CmdHeartbeat, "", nil},
+			{cs.CmdHeartbeat, "", nil},
 			{"d", "", nil},
 			{"e", "", nil},
 			{"f", "", nil},
-			{cmdsrv.CmdClosed, "", nil},
+			{cs.CmdClosed, "", nil},
 			{"g", "", nil},
 		},
 		sid: "1",
 	}
 	server2 := &testAdapter{sid: "2"}
-	srv := cmdsrv.New(server1, server2)
+	srv := cs.New(server1, server2)
 	gtest.C(t, func(t *gtest.T) {
-		srv.Use(func(c *cmdsrv.Context) {
+		srv.Use(func(c *cs.Context) {
 			c.Next()
 			switch c.Cmd {
 			case "a":
@@ -228,30 +228,30 @@ func TestSrv_Response(t *testing.T) {
 				t.Assert(c.Data, struct{}{})
 			}
 		})
-		srv.Handle("a", func(c *cmdsrv.Context) {
+		srv.Handle("a", func(c *cs.Context) {
 			c.OK()
 		})
-		srv.Handle("b", func(c *cmdsrv.Context) {
+		srv.Handle("b", func(c *cs.Context) {
 			c.OK("str")
 		})
-		srv.Handle("c", func(c *cmdsrv.Context) {
+		srv.Handle("c", func(c *cs.Context) {
 			c.OK(123)
 		})
-		srv.Handle("d", func(c *cmdsrv.Context) {
+		srv.Handle("d", func(c *cs.Context) {
 			c.Err(errors.New("err1"), 11)
 		})
-		srv.Handle("e", func(c *cmdsrv.Context) {
+		srv.Handle("e", func(c *cs.Context) {
 			c.Resp(12, "msg2", "data2")
-			c.Push(&cmdsrv.Response{
+			c.Push(&cs.Response{
 				Cmd: "tp",
 			})
-			c.Srv.Push("1", &cmdsrv.Response{
+			c.Srv.Push("1", &cs.Response{
 				Cmd: "tp",
 			})
-			t.AssertNE(c.Srv.Push("100", &cmdsrv.Response{
+			t.AssertNE(c.Srv.Push("100", &cs.Response{
 				Cmd: "tp",
 			}), nil)
-			c.Broadcast(&cmdsrv.Response{
+			c.Broadcast(&cs.Response{
 				Cmd: "bdc",
 			})
 			t.AssertIN(c.GetAllSID(), []string{"1", "2"})
@@ -265,19 +265,19 @@ func TestSrv_Response(t *testing.T) {
 }
 
 func TestSrv_State(t *testing.T) {
-	srv := cmdsrv.New(&testAdapter{
-		request: []*cmdsrv.Request{
+	srv := cs.New(&testAdapter{
+		request: []*cs.Request{
 			{"a", "1", []byte(`{"x":1}`)},
 			{"b", "2", []byte(`[{"y":2}]`)},
 		},
 	})
 	uid := 10
 	srv.SetStateExpire(10 * time.Millisecond)
-	srv.Use(func(c *cmdsrv.Context) {
+	srv.Use(func(c *cs.Context) {
 		c.Set("uid", uid)
 	})
 	gtest.C(t, func(t *gtest.T) {
-		srv.Handle("a", func(c *cmdsrv.Context) {
+		srv.Handle("a", func(c *cs.Context) {
 			t.Assert(c.Get("uid").(int), uid)
 		})
 		srv.Run()

@@ -1,4 +1,4 @@
-package cmdsrv
+package cs
 
 import (
 	"fmt"

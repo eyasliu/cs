@@ -3,9 +3,9 @@ package main
 import (
 	"net/http"
 
-	"github.com/eyasliu/cmdsrv"
-	"github.com/eyasliu/cmdsrv/xhttp"
-	"github.com/eyasliu/cmdsrv/xwebsocket"
+	"github.com/eyasliu/cs"
+	"github.com/eyasliu/cs/xhttp"
+	"github.com/eyasliu/cs/xwebsocket"
 )
 
 func main() {
@@ -19,10 +19,10 @@ func main() {
 
 	go http.ListenAndServe(":13000", nil)
 
-	srv := cmdsrv.New(httpAdapter, wsAdapter)
+	srv := cs.New(httpAdapter, wsAdapter)
 	srv.Use(srv.AccessLogger("ECHOSRV"))
 
-	srv.Use(func(c *cmdsrv.Context) {
+	srv.Use(func(c *cs.Context) {
 		c.OK(c.RawData)
 		c.Abort()
 	})

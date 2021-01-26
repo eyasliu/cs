@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/eyasliu/cmdsrv"
-	"github.com/eyasliu/cmdsrv/xtcp"
+	"github.com/eyasliu/cs"
+	"github.com/eyasliu/cs/xtcp"
 	"github.com/gogf/gf/test/gtest"
 )
 
@@ -60,7 +60,7 @@ func TestTcp(t *testing.T) {
 			"seqno": "12345",
 			"data":  "asdfgh",
 		}
-		srv.Handle(data["cmd"].(string), func(c *cmdsrv.Context) {
+		srv.Handle(data["cmd"].(string), func(c *cs.Context) {
 			c.OK(c.RawData)
 		})
 		go srv.Run()

@@ -1,13 +1,13 @@
 package xgnet
 
 import (
-	"github.com/eyasliu/cmdsrv"
+	"github.com/eyasliu/cs"
 )
 
 type Conn struct {
 }
 
-func (c *Conn) Send(v *cmdsrv.Response) error {
+func (c *Conn) Send(v *cs.Response) error {
 	return nil
 }
 

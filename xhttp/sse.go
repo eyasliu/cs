@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/eyasliu/cmdsrv"
+	"github.com/eyasliu/cs"
 )
 
 type SSEMsgType byte
@@ -75,7 +75,7 @@ func (s *SSEConn) init() error {
 	return nil
 }
 
-func (s *SSEConn) Send(v ...*cmdsrv.Response) error {
+func (s *SSEConn) Send(v ...*cs.Response) error {
 	if s.w == nil {
 		err := errors.New("connection is already closed")
 		s.destroy(err)

@@ -3,7 +3,7 @@ package xgnet_test
 import (
 	"testing"
 
-	"github.com/eyasliu/cmdsrv/xgnet"
+	"github.com/eyasliu/cs/xgnet"
 	"github.com/gogf/gf/test/gtest"
 )
 

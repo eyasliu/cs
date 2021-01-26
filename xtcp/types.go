@@ -3,12 +3,12 @@ package xtcp
 import (
 	"encoding/json"
 
-	"github.com/eyasliu/cmdsrv"
+	"github.com/eyasliu/cs"
 )
 
 type reqMessage struct {
 	sid  string
-	data *cmdsrv.Request
+	data *cs.Request
 }
 
 type requestData struct {

@@ -1,4 +1,4 @@
-package cmdsrv
+package cs
 
 import (
 	"encoding/json"
@@ -7,11 +7,11 @@ import (
 // 内置命令
 const (
 	// CmdConnected on connection connected
-	CmdConnected = "__cmdsrv_connected__"
+	CmdConnected = "__cs_connected__"
 	// CmdClosed on connection closed
-	CmdClosed = "__cmdsrv_closed__"
+	CmdClosed = "__cs_closed__"
 	// CmdHeartbeat heartbeat message
-	CmdHeartbeat = "__cmdsrv_heartbeat__"
+	CmdHeartbeat = "__cs_heartbeat__"
 )
 
 // 默认消息

@@ -4,7 +4,7 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/eyasliu/cmdsrv"
+	"github.com/eyasliu/cs"
 	"github.com/panjf2000/gnet"
 )
 
@@ -42,14 +42,14 @@ func New(v interface{}) *GNet {
 
 // }
 
-func (g *GNet) Read(s *cmdsrv.Srv) (string, *cmdsrv.Request, error) {
+func (g *GNet) Read(s *cs.Srv) (string, *cs.Request, error) {
 	m, ok := <-g.receive
 	if !ok {
 		return "", nil, errors.New("websocker server is shutdown")
 	}
 	return m.sid, m.data, nil
 }
-func (g *GNet) Write(sid string, resp *cmdsrv.Response) error {
+func (g *GNet) Write(sid string, resp *cs.Response) error {
 	conn, ok := g.session[sid]
 	if !ok {
 		return errors.New("connection is already close")
@@ -68,8 +68,8 @@ func (g *GNet) Close(sid string) error {
 		return err
 	}
 	g.receive <- &reqMessage{
-		data: &cmdsrv.Request{
-			Cmd: cmdsrv.CmdClosed,
+		data: &cs.Request{
+			Cmd: cs.CmdClosed,
 		},
 		sid: sid,
 	}
@@ -88,8 +88,8 @@ func (g *GNet) GetAllSID() []string {
 	return sids
 }
 
-func (g *GNet) Srv() (*cmdsrv.Srv, error) {
-	return cmdsrv.New(g), nil
+func (g *GNet) Srv() (*cs.Srv, error) {
+	return cs.New(g), nil
 }
 
 func (g *GNet) Run() error {

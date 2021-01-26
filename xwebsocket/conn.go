@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"sync"
 
-	"github.com/eyasliu/cmdsrv"
+	"github.com/eyasliu/cs"
 	"github.com/gorilla/websocket"
 )
 
@@ -17,7 +17,7 @@ type Conn struct {
 type reqMessage struct {
 	sid     string
 	msgType int
-	data    *cmdsrv.Request
+	data    *cs.Request
 }
 
 type requestData struct {
@@ -35,7 +35,7 @@ type responseData struct {
 }
 
 // Send 往连接推送消息，线程安全
-func (c *Conn) Send(v ...*cmdsrv.Response) error {
+func (c *Conn) Send(v ...*cs.Response) error {
 	if len(v) == 0 {
 		return nil
 	}

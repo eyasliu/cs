@@ -1,4 +1,4 @@
-# cmdsrv tcp
+# cs tcp
 
 TCP 的适配器实现
 
@@ -44,7 +44,7 @@ type MsgPkg interface {
 }
 ```
 
- * cmd 表示命令名，对应 cmdsrv 的路由
+ * cmd 表示命令名，对应 cs 的路由
  * seqno 表示该请求的唯一标识，在响应中会原样返回
  * data 表示请求数据，可以是任意值，如 string, number, object, array, null
 
@@ -70,13 +70,13 @@ type MsgPkg interface {
 ## 使用示例
 
  1. 指定配置实例化 tcp 服务
- 2. 通过 tcp 服务生成 cmdsrv 实例
+ 2. 通过 tcp 服务生成 cs 实例
 
 ```go
 package main
 import (
   "net"
-  "github.com/eyasliu/cmdsrv/xtcp"
+  "github.com/eyasliu/cs/xtcp"
 )
 
 func main() {

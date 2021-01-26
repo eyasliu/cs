@@ -1,9 +1,9 @@
 # Cmd Srv
 
-[![Build Status](https://travis-ci.com/eyasliu/cmdsrv.svg)](https://travis-ci.com/eyasliu/cmdsrv)
-[![Go Doc](https://godoc.org/github.com/eyasliu/cmdsrv?status.svg)](https://godoc.org/github.com/eyasliu/cmdsrv)
-[![Code Coverage](https://codecov.io/gh/eyasliu/cmdsrv/branch/master/graph/badge.svg)](https://codecov.io/gh/eyasliu/cmdsrv/branch/master)
-[![License](https://img.shields.io/github/license/eyasliu/cmdsrv.svg?style=flat)](https://github.com/eyasliu/cmdsrv)
+[![Build Status](https://travis-ci.com/eyasliu/cs.svg)](https://travis-ci.com/eyasliu/cs)
+[![Go Doc](https://godoc.org/github.com/eyasliu/cs?status.svg)](https://godoc.org/github.com/eyasliu/cs)
+[![Code Coverage](https://codecov.io/gh/eyasliu/cs/branch/master/graph/badge.svg)](https://codecov.io/gh/eyasliu/cs/branch/master)
+[![License](https://img.shields.io/github/license/eyasliu/cs.svg?style=flat)](https://github.com/eyasliu/cs)
 
 开箱即用的基于命令的消息处理框架，让 websocket 和 tcp 开发就像 http 那样简单
 
@@ -14,8 +14,8 @@
 package main
 import (
   "net/http"
-  "github.com/eyasliu/cmdsrv"
-  "github.com/eyasliu/cmdsrv/xwebsocket"
+  "github.com/eyasliu/cs"
+  "github.com/eyasliu/cs/xwebsocket"
 )
 
 func main() {
@@ -24,10 +24,10 @@ func main() {
   http.Handle("/ws", ws)
 
   srv := ws.Srv()
-  srv.Use(cmdsrv.AccessLogger("MYSRV")). // 打印请求响应日志
-            Use(cmdsrv.Recover()) // 统一错误处理，消化 panic 错误
+  srv.Use(cs.AccessLogger("MYSRV")). // 打印请求响应日志
+            Use(cs.Recover()) // 统一错误处理，消化 panic 错误
 
-  srv.Handle("register", func(c *cmdsrv.Context) {
+  srv.Handle("register", func(c *cs.Context) {
     // 定义请求数据
     var body struct {
       UID  int    `p:"uid" v:"required"`
@@ -48,13 +48,13 @@ func main() {
     })
 
     // 给所有连接广播消息
-    c.Broadcast(&cmdsrv.Response{
+    c.Broadcast(&cs.Response{
       Cmd:  "someone_online",
       Data: body,
     })
 
     // 往当前连接主动推送消息
-    c.Push(&cmdsrv.Response{
+    c.Push(&cs.Response{
       Cmd:  "welcome",
       Data: "welcome to register my server",
     })
@@ -62,7 +62,7 @@ func main() {
     // 遍历所有在线会话，获取其他会话的状态，并往指定会话推送消息
     for _, sid := range c.GetAllSID() {
       if c.Srv.GetState(sid, "uid") != nil {
-        c.Srv.Push(sid, &cmdsrv.Response{
+        c.Srv.Push(sid, &cs.Response{
           Cmd:  "firend_online",
           Data: "your firend is online",
         })
@@ -71,7 +71,7 @@ func main() {
   })
 
   // 分组
-  group := srv.Group(func(c *cmdsrv.Context) {
+  group := srv.Group(func(c *cs.Context) {
     // 过滤指定请求
     if _, ok := c.Get("uid").(int); !ok {
       c.Err(errors.New("unregister session"), 101)
@@ -80,7 +80,7 @@ func main() {
     c.Next()
   })
 
-  group.Handle("userinfo", func(c *cmdsrv.Context) {
+  group.Handle("userinfo", func(c *cs.Context) {
     uid := c.Get("uid").(int) // 中间件已处理过，可大胆断言
     c.OK(map[string]interface{}{
       "uid": uid,
@@ -100,7 +100,7 @@ func main() {
 ```go
 import (
   "net/http"
-  "github.com/eyasliu/cmdsrv/xwebsocket"
+  "github.com/eyasliu/cs/xwebsocket"
 )
 
 func main() {
@@ -117,7 +117,7 @@ func main() {
 
 ```go
 import (
-  "github.com/eyasliu/cmdsrv/xtcp"
+  "github.com/eyasliu/cs/xtcp"
 )
 
 func main() {
@@ -135,7 +135,7 @@ func main() {
 
 ```go
 import (
-  "github.com/eyasliu/cmdsrv/xgnet"
+  "github.com/eyasliu/cs/xgnet"
 )
 
 func main() {
@@ -154,8 +154,8 @@ func main() {
 ```go
 import (
   "net/http"
-  "github.com/eyasliu/cmdsrv"
-  "github.com/eyasliu/cmdsrv/xhttp"
+  "github.com/eyasliu/cs"
+  "github.com/eyasliu/cs/xhttp"
 )
 
 func main() {
@@ -174,10 +174,10 @@ func main() {
 ```go
 import (
   "net/http"
-  "github.com/eyasliu/cmdsrv"
-  "github.com/eyasliu/cmdsrv/xhttp"
-  "github.com/eyasliu/cmdsrv/xwebsocket"
-  "github.com/eyasliu/cmdsrv/xtcp"
+  "github.com/eyasliu/cs"
+  "github.com/eyasliu/cs/xhttp"
+  "github.com/eyasliu/cs/xwebsocket"
+  "github.com/eyasliu/cs/xtcp"
 )
 
 func main() {
@@ -197,7 +197,7 @@ func main() {
   go tcp.Run()
   go http.ListenAndServe(":8080", nil)
 
-  srv := cmdsrv.New(server, ws, tcp)
+  srv := cs.New(server, ws, tcp)
   srv.Run() // 阻塞运行
 }
 ```
@@ -222,8 +222,8 @@ $ curl -XPOST -H"Content-Type:application/json" --data '{"cmd":"register", "data
 
 实现方案：
 
-在 websocket 和 tcp 中，每个连接都抽象成一个字符串 `SID`, 即 Session ID, cmdsrv 只负责处理消息，不处理连接的任何状态，与连接和状态相关的操作全都以 interface 定义好，给各种工具去实现
+在 websocket 和 tcp 中，每个连接都抽象成一个字符串 `SID`, 即 Session ID, cs 只负责处理消息，不处理连接的任何状态，与连接和状态相关的操作全都以 interface 定义好，给各种工具去实现
 
 ## API
 
-[GoDoc](https://pkg.go.dev/github.com/eyasliu/cmdsrv)
+[GoDoc](https://pkg.go.dev/github.com/eyasliu/cs)

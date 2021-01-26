@@ -10,11 +10,11 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/eyasliu/cmdsrv"
+	"github.com/eyasliu/cs"
 )
 
 type HTTP struct {
-	srv       *cmdsrv.Srv
+	srv       *cs.Srv
 	receive   chan *reqMessage
 	session   map[string][]*SSEConn // http 模式可能出现一个会话多个连接的情况
 	sessionMu sync.RWMutex
@@ -55,14 +55,14 @@ func (h *HTTP) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	h.Handler(w, req)
 }
 
-func (h *HTTP) Srv() *cmdsrv.Srv {
+func (h *HTTP) Srv() *cs.Srv {
 	if h.srv == nil {
-		h.srv = cmdsrv.New(h)
+		h.srv = cs.New(h)
 	}
 	return h.srv
 }
 
-func (h *HTTP) Write(sid string, resp *cmdsrv.Response) error {
+func (h *HTTP) Write(sid string, resp *cs.Response) error {
 	conns, ok := h.session[sid]
 	if !ok {
 		return errors.New("connection is already close")
@@ -75,7 +75,7 @@ func (h *HTTP) Write(sid string, resp *cmdsrv.Response) error {
 	return nil
 }
 
-func (h *HTTP) Read(srv *cmdsrv.Srv) (sid string, req *cmdsrv.Request, err error) {
+func (h *HTTP) Read(srv *cs.Srv) (sid string, req *cs.Request, err error) {
 	h.srv = srv
 	<-make(chan struct{})
 	return "", nil, errors.New("HTTP Adapter unsupport Read")
@@ -126,7 +126,7 @@ func (h *HTTP) setSid(w http.ResponseWriter, req *http.Request) string {
 
 func (h *HTTP) invokeHandle(sid string, w http.ResponseWriter, req *http.Request) {
 	reqData := &requestData{}
-	respData := &cmdsrv.Response{}
+	respData := &cs.Response{}
 	data, err := ioutil.ReadAll(req.Body)
 	if err != nil {
 		respData.Msg = err.Error()
@@ -135,7 +135,7 @@ func (h *HTTP) invokeHandle(sid string, w http.ResponseWriter, req *http.Request
 		if err != nil {
 			respData.Msg = err.Error()
 		}
-		ctx := h.srv.NewContext(h, sid, &cmdsrv.Request{
+		ctx := h.srv.NewContext(h, sid, &cs.Request{
 			Cmd:     reqData.Cmd,
 			Seqno:   reqData.Seqno,
 			RawData: reqData.Data,
