@@ -1,6 +1,6 @@
 module github.com/eyasliu/cmdsrv
 
-go 1.15
+go 1.12
 
 require (
 	github.com/gogf/gf v1.15.1
