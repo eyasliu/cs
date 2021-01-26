@@ -20,7 +20,7 @@ func main() {
 	go http.ListenAndServe(":13000", nil)
 
 	srv := cmdsrv.New(httpAdapter, wsAdapter)
-	srv.Use(cmdsrv.AccessLogger("ECHOSRV"))
+	srv.Use(srv.AccessLogger("ECHOSRV"))
 
 	srv.Use(func(c *cmdsrv.Context) {
 		c.OK(c.RawData)

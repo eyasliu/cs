@@ -53,7 +53,7 @@ func TestTcp(t *testing.T) {
 	gtest.C(t, func(t *gtest.T) {
 		srv, err := xtcp.New("127.0.0.1:5670").Srv()
 		t.Assert(err, nil)
-		srv.Use(cmdsrv.AccessLogger("MYSRV"))
+		srv.Use(srv.AccessLogger("MYSRV"))
 
 		data := map[string]interface{}{
 			"cmd":   "register",

@@ -44,7 +44,8 @@ func TestWS(t *testing.T) {
 
 	go http.ListenAndServe(":5679", nil)
 
-	srv := ws.Srv().Use(cmdsrv.AccessLogger("MYSRV")) // 打印请求响应日志
+	srv := ws.Srv()
+	srv.Use(srv.AccessLogger("MYSRV")) // 打印请求响应日志
 
 	gtest.C(t, func(t *gtest.T) {
 		data := map[string]interface{}{
@@ -82,7 +83,7 @@ func ExampleNew() {
 	http.Handle("/ws", ws)
 
 	srv := ws.Srv()
-	srv.Use(cmdsrv.AccessLogger("MYSRV")). // 打印请求响应日志
+	srv.Use(srv.AccessLogger("MYSRV")). // 打印请求响应日志
 						Use(cmdsrv.Recover()) // 统一错误处理，消化 panic 错误
 
 	srv.Handle("register", func(c *cmdsrv.Context) {

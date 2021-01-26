@@ -20,7 +20,7 @@ type WS struct {
 	session   map[string]*Conn
 	sessionMu sync.RWMutex
 	receive   chan *reqMessage
-	sidCount  uint64
+	sidCount  uint32
 }
 
 var _ cmdsrv.ServerAdapter = &WS{}
@@ -48,7 +48,7 @@ func (ws *WS) Handler(w http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		return
 	}
-	atomic.AddUint64(&ws.sidCount, 1)
+	atomic.AddUint32(&ws.sidCount, 1)
 
 	sid := fmt.Sprintf("ws.%d", ws.sidCount)
 

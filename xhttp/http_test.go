@@ -37,9 +37,10 @@ func TestHttpSrv(t *testing.T) {
 	h := xhttp.New()
 	http.Handle("/cmd1", h)
 	http.HandleFunc("/cmd2", h.Handler)
-	go http.ListenAndServe(":5679", nil)
+	go http.ListenAndServe(":5673", nil)
 
-	srv := h.Srv().Use(cmdsrv.AccessLogger("MYSRV")) // 打印请求响应日志
+	srv := h.Srv()
+	srv.Use(srv.AccessLogger("MYSRV")) // 打印请求响应日志
 
 	gtest.C(t, func(t *gtest.T) {
 		data := map[string]interface{}{
@@ -50,17 +51,18 @@ func TestHttpSrv(t *testing.T) {
 		srv.Handle(data["cmd"].(string), func(c *cmdsrv.Context) {
 			c.OK(c.RawData)
 		})
+		go srv.Run()
 
 		time.Sleep(100 * time.Millisecond)
 
-		res, err := sendToHttp("http://127.0.0.1:5679/cmd1", data)
+		res, err := sendToHttp("http://127.0.0.1:5673/cmd1", data)
 
 		t.Assert(err, nil)
 		t.Assert(res["cmd"], data["cmd"])
 		t.Assert(res["data"], data["data"])
 		t.Assert(res["seqno"], data["seqno"])
 
-		res, err = sendToHttp("http://127.0.0.1:5679/cmd2", data)
+		res, err = sendToHttp("http://127.0.0.1:5673/cmd2", data)
 
 		t.Assert(err, nil)
 		t.Assert(res["cmd"], data["cmd"])

@@ -18,7 +18,7 @@ type TCP struct {
 	session   map[string]*Conn
 	sessionMu sync.RWMutex
 	receive   chan *reqMessage
-	sidCount  uint64
+	sidCount  uint32
 }
 
 // New 创建 TCP 适配器，必需指定地址或者配置，使用默认的私有协议解析数据包
@@ -128,7 +128,7 @@ func (t *TCP) accept() {
 		if err != nil {
 			continue
 		}
-		atomic.AddUint64(&t.sidCount, 1)
+		atomic.AddUint32(&t.sidCount, 1)
 
 		sid := fmt.Sprintf("tcp.%d", t.sidCount)
 		t.newConn(sid, conn)

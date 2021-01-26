@@ -19,7 +19,7 @@ type HTTP struct {
 	session   map[string][]*SSEConn // http 模式可能出现一个会话多个连接的情况
 	sessionMu sync.RWMutex
 	sidKey    string
-	sidCount  uint64
+	sidCount  uint32
 	hbTime    time.Duration
 	msgType   SSEMsgType
 }
@@ -109,7 +109,7 @@ func (h *HTTP) setSid(w http.ResponseWriter, req *http.Request) string {
 	cookie, err := req.Cookie(h.sidKey)
 	var sid string
 	if err != nil || cookie == nil {
-		atomic.AddUint64(&h.sidCount, 1)
+		atomic.AddUint32(&h.sidCount, 1)
 		sid := fmt.Sprintf("http.%d", h.sidCount)
 		cookie = &http.Cookie{
 			Name:     h.sidKey,
