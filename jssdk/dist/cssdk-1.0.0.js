@@ -41,14 +41,25 @@
       this.url = url;
       this.sendTimeout = 10000;
       this._progress = new Map();
-      this._ins = this._init();
-      this._events();
+      this._init();
     }
     get adapterName() {
       if (this.url.indexOf('ws') === 0) {
         return 'ws'
       }
       return 'http'
+    }
+    async resetUrl(url) {
+      this.destroy();
+      this.url = url;
+      this._init();
+    }
+    destroy() {
+      if (!this.adapter) {
+        return
+      }
+      this.adapter.close();
+      this.adapter = null;
     }
     async send(cmd, data) {
       const body = { cmd, data };
@@ -77,18 +88,17 @@
     }
     _init() {
       if (this.adapterName === 'ws') {
-        // return new WS(this.url)
-        return this._initWs()
+        this.adapter = this._initWs();
+      } else {
+        this.adapter = this._initHttp();
       }
-      // return new HTTP(this.url)
-      return this._initHttp()
+      this._events();
     }
     _initWs() {
-      this.adapter = new WebSocket(this.url);
-
+      return new WebSocket(this.url)
     }
     _initHttp() {
-      this.adapter = new EventSource(this.url);
+      return new EventSource(this.url)
     }
     _events() {
       this.adapter.onopen = e => {
