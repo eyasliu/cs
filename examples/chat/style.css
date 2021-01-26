@@ -105,7 +105,7 @@
     font-size: 100%;
   }
   
-  .log,.adapter {
+  .log,.adapter, .online {
     color: gray;
     font-size: 70%;
     margin: 5px;

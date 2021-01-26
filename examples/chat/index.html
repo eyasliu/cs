@@ -20,6 +20,10 @@
                                 ? 'HTTP':
                                 "Websocket"}}</span>
                         </span>
+                        <span v-else-if="m.type == 'online'">
+                            {{m.message}}
+                            <span @click="resetName" style="color: #597bdc;cursor:pointer;">修改昵称</span>
+                        </span>
                         <span v-else>
                             <span class="username" :style="{color:getColor(m.name)}">{{m.name}}</span>
                             <span class="messageBody">{{m.message}}</span>
@@ -97,6 +101,10 @@
                     await this.cs.send('register', { name: this.name })
                     this.isLogin = true
                 },
+                resetName() {
+                    localStorage.removeItem("nickname")
+                    window.location.reload()
+                },
                 async events() {
                     this.cs.on('cs.connected', e => {
                         this.isLogin = true
@@ -105,7 +113,7 @@
                             message: this.adapter,
                         })
                         this.msgs.push({
-                            type: 'log',
+                            type: 'online',
                             message: this.name + " 已进入聊天室",
                             name: this.name,
                         })
