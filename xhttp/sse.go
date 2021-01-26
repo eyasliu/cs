@@ -76,7 +76,7 @@ func (s *SSEConn) init() error {
 }
 
 func (s *SSEConn) Send(v ...*cmdsrv.Response) error {
-	if s.w != nil {
+	if s.w == nil {
 		err := errors.New("connection is already closed")
 		s.destroy(err)
 		return err
@@ -96,7 +96,14 @@ func (s *SSEConn) Send(v ...*cmdsrv.Response) error {
 				msg += "data: " + string(dataBt) + "\n"
 			}
 		} else if s.msgType == SSEMessage {
-			dataBt, err := json.Marshal(resp.Data)
+			resp1 := &responseData{
+				Cmd:   resp.Cmd,
+				Seqno: resp.Seqno,
+				Code:  resp.Code,
+				Msg:   resp.Msg,
+				Data:  resp.Data,
+			}
+			dataBt, err := json.Marshal(resp1)
 			if err != nil {
 				return err
 			}
@@ -111,7 +118,6 @@ func (s *SSEConn) Send(v ...*cmdsrv.Response) error {
 			s.destroy(err)
 			return err
 		}
-
 	}
 	return nil
 }

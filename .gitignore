@@ -2,3 +2,5 @@ test.sh
 cov*.html
 covprofile
 __debug*
+.vscode
+.idea

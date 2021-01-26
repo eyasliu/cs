@@ -32,7 +32,7 @@ func New() *HTTP {
 		session: make(map[string][]*SSEConn),
 		receive: make(chan *reqMessage, 2),
 		hbTime:  defaultHeartBeatTime,
-		msgType: SSEEvent,
+		msgType: SSEMessage,
 	}
 	return h
 }
@@ -174,4 +174,22 @@ func (h *HTTP) invokeSSE(sid string, w http.ResponseWriter, req *http.Request) {
 	h.session[sid] = conns
 	h.sessionMu.Unlock()
 	<-conn.notifyErr
+
+	h.sessionMu.Lock()
+	conns, ok = h.session[sid]
+	if !ok {
+		return
+	}
+	nextConns := make([]*SSEConn, 0, len(conns) - 1)
+	for _, c := range conns {
+		if c != conn {
+			nextConns = append(nextConns, c)
+		}
+	}
+	if len(nextConns) > 0 {
+		h.session[sid] = nextConns
+	} else {
+		delete(h.session, sid)
+	}
+	h.sessionMu.Unlock()
 }
