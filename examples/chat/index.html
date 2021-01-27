@@ -13,10 +13,12 @@
             <div class="chatArea">
                 <ul class="messages">
                     <li v-for="m in msgs" :class="m.type">
-                        <span v-if="m.type == 'log'">{{m.message}}</span>
+                        <span v-if="m.type == 'log'"><span v-html="m.message"></span></span>
                         <span v-else-if="m.type == 'adapter'">
                             当前通讯方式为: {{m.message == 'ws' ? 'Websocket': "HTTP"}}
-                            <span @click="toggleAdapter" style="color: #597bdc;cursor:pointer;">点击切换为 {{m.message == 'ws'
+                            <span @click="toggleAdapter(m.message == 'ws'?'http':'ws')"
+                                style="color: #597bdc;cursor:pointer;">点击切换为 {{m.message ==
+                                'ws'
                                 ? 'HTTP':
                                 "Websocket"}}</span>
                         </span>
@@ -53,8 +55,8 @@
             return familyNames[parseInt((Math.random() * 100)) % familyNames.length] +
                 givenNames[parseInt((Math.random() * 100)) % givenNames.length]
         }
-        const COLORS = [ '#e21400', '#91580f', '#f8a700', '#f78b00', '#58dc00', '#287b00', '#a8f07a', '#4ae8c4', '#3b88eb', '#3824aa', '#a700ff', '#d300e7' ]
-        var httpUrl = "/http"
+        const COLORS = ['#e21400', '#91580f', '#f8a700', '#f78b00', '#58dc00', '#287b00', '#a8f07a', '#4ae8c4', '#3b88eb', '#3824aa', '#a700ff', '#d300e7']
+        var httpUrl = "/sse"
         var wsUrl = "ws://" + location.host + "/ws"
         var adapter = localStorage.getItem('adapter')
         var name = localStorage.getItem("nickname")
@@ -78,6 +80,14 @@
                 url() { return this.adapter == "http" ? httpUrl : wsUrl }
             },
             mounted() {
+                this.msgs.push({
+                    type: 'log',
+                    message: '欢迎光临聊天室demo，Github 地址: <a target="_blank" href="https://github.com/eyasliu/cs/tree/master/examples/chat">https://github.com/eyasliu/cs</a><br />'
+                })
+                this.msgs.push({
+                    type: 'log',
+                    message: '<font colot="red">当前聊天室仅用于演示目的, 服务器不存储任何数据</font>'
+                })
                 through && this.login()
             },
             methods: {
@@ -92,8 +102,11 @@
                     localStorage.setItem('nickname', this.name)
                     this.events()
                 },
-                toggleAdapter() {
-                    this.adapter = this.adapter == 'ws' ? 'http' : 'ws'
+                toggleAdapter(target) {
+                    if (target == this.adapter) {
+                        return
+                    }
+                    this.adapter = target
                     this.cs.resetUrl(this.url)
                     localStorage.setItem('adapter', this.adapter)
                 },

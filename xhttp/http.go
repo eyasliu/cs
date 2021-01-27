@@ -39,10 +39,16 @@ func New() *HTTP {
 
 func (h *HTTP) Handler(w http.ResponseWriter, req *http.Request) {
 	if h.srv == nil {
+		w.WriteHeader(500)
 		w.Write([]byte("srv not running"))
 		return
 	}
 	sid := h.setSid(w, req)
+	if sid == "" {
+		w.WriteHeader(400)
+		w.Write([]byte("invalid sid, must allow cookie to store sid"))
+		return
+	}
 	if req.Method == "GET" {
 		h.invokeSSE(sid, w, req)
 	} else if req.Method == "POST" || req.Method == "PUT" || req.Method == "DELETE" {
@@ -112,7 +118,7 @@ func (h *HTTP) setSid(w http.ResponseWriter, req *http.Request) string {
 		atomic.AddUint32(&h.sidCount, 1)
 		// 因为sid是存cookie的，而程序每次重启，这个计数器都会重置为 0
 		// 只使用计数器会导致 sid 重复，需要加上其他变量，计数器可以保证在高并发时不会重复
-		sid := fmt.Sprintf("http.%s-%d", time.Now().Format("200601021504050700"), h.sidCount)
+		sid := fmt.Sprintf("http.%d-%d", time.Now().Unix(), h.sidCount)
 		cookie = &http.Cookie{
 			Name:     h.sidKey,
 			Value:    sid,

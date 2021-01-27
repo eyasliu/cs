@@ -102,9 +102,11 @@ func (ws *WS) GetAllSID() []string {
 // 初始化 ws 连接
 func (ws *WS) newConn(sid string, conn *websocket.Conn) {
 	ws.sessionMu.Lock()
-	ws.session[sid] = &Conn{
-		Conn: conn,
+	c := &Conn{
+		Conn:    conn,
+		msgType: websocket.TextMessage,
 	}
+	ws.session[sid] = c
 	ws.sessionMu.Unlock()
 	ws.receive <- &reqMessage{msgType: websocket.TextMessage, data: &cs.Request{
 		Cmd: cs.CmdConnected,
@@ -114,6 +116,9 @@ func (ws *WS) newConn(sid string, conn *websocket.Conn) {
 		if err != nil {
 			log.Println(err)
 			return
+		}
+		if c.msgType != messageType {
+			c.msgType = messageType
 		}
 
 		if len(payload) == 0 { // heartbeat

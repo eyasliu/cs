@@ -2,9 +2,16 @@ package xhttp
 
 import (
 	"encoding/json"
+	"time"
 
 	"github.com/eyasliu/cs"
 )
+
+type Config struct {
+	MsgType       SSEMsgType // 消息类型
+	HeartbeatTime time.Duration
+	SIDKey        string
+}
 
 type reqMessage struct {
 	sid  string

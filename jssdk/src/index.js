@@ -1,10 +1,30 @@
 import Emit from './emiter'
-import {randStr} from './util'
+import { randStr } from './util'
+
+const msgBlog = "blob"
+const msgText = "text"
+
+const defaultOptions = {
+  headers: {},
+  wsMsgType: msgText,
+  wsHeartBeatTime: 10000,
+  withCredentials: true,
+}
 
 class CS extends Emit {
-  constructor(url) {
+  constructor(url, options) {
     super()
+    if (typeof url === 'object') {
+      options = url
+      url = options.url
+    }
+    if (!url) {
+      throw new Error("cs initial must require url")
+    }
+
+
     this.url = url
+    this.options = Object.assign({}, defaultOptions, options || {})
     this.sendTimeout = 10000
     this._progress = new Map()
     this._init()
@@ -26,6 +46,8 @@ class CS extends Emit {
     }
     this.adapter.close()
     this.adapter = null
+    this.wshb && clearInterval(this.wshb)
+    this.wshb = null
   }
   async send(cmd, data) {
     const body = { cmd, data }
@@ -38,9 +60,10 @@ class CS extends Emit {
         method: "POST",
         headers: {
           'Content-Type': "application/json",
+          ...(this.options.headers || {}),
         },
         body: JSON.stringify(body),
-        credentials: 'include',
+        credentials: this.options.withCredentials ? 'include' : 'omit',
       }).then(r => r.json())
     }
 
@@ -67,12 +90,24 @@ class CS extends Emit {
   _initWs() {
     const ws = new WebSocket(this.url)
     ws.addEventListener('close', e => {
-      console.log(e)
+      this.wshb && clearInterval(this.wshb)
+      this.wshb = null
     })
+    // 心跳
+    this.wshb = setInterval(() => {
+      const hb = this.options.wsMsgType == msgBlog ? new Blob([''], { type: 'text/plain' }) : "";
+      ws.send(hb)
+    }, this.options.wsHeartBeatTime)
     return ws
   }
   _initHttp() {
-    return new EventSource(this.url)
+    if (this.options.withCredentials === false) {
+      console.warn("[CS]http adapter required Cookie to work fine, but you set withCredentials=false, Server-Send Event maybe invalid")
+    }
+    return new EventSource(this.url, {
+      headers: this.options.headers,
+      withCredentials: this.options.withCredentials,
+    })
   }
   _events() {
     this.adapter.onopen = e => {
@@ -87,8 +122,12 @@ class CS extends Emit {
     }
     this.adapter.onmessage = this._onMessage.bind(this)
   }
-  _onMessage(e) {
-    const body = JSON.parse(e.data)
+  async _onMessage(e) {
+    let raw = e.data
+    if (raw instanceof Blob) {
+      raw = await raw.text()
+    }
+    const body = JSON.parse(raw)
     this.emit('cs.message', body)
     const { cmd, seqno, data } = body
     this.emit(cmd, data)
@@ -99,9 +138,6 @@ class CS extends Emit {
       const [resolve] = p
       resolve(body)
     }
-  }
-  _invokeProgress() {
-
   }
   _sendByWs(body) {
     return new Promise((resolve, reject) => {
@@ -130,7 +166,10 @@ class CS extends Emit {
       }, this.sendTimeout)
 
       this._progress.set(seqno, [resolveH])
-      const s = JSON.stringify(body)
+      let s = JSON.stringify(body)
+      if (this.options.wsMsgType !== msgText) {
+        s = new Blob([s], { type: 'text/plain' })
+      }
       this.adapter.send(s)
     })
   }

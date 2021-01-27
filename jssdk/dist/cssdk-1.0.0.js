@@ -6,39 +6,59 @@
 
   class Emiter {
     constructor() {
-      this.evts = new Map();
+      this._listeners = new Map();
     }
     on(type, handler) {
       if (!type || !handler) {
         return
       }
-      const hs = this.evts.get(type);
+      const hs = this._listeners.get(type);
       const nextHs = hs && hs.push(handler);
       if (!nextHs) {
-        this.evts.set(type, [handler]);
+        this._listeners.set(type, [handler]);
       }
     }
     off(type, handler) {
       if (!type || !handler) {
         return
       }
-      const hs = this.evts.get(type);
+      const hs = this._listeners.get(type);
       if (hs) {
         hs.splice(hs.indexOf(handler) >>> 0, 1);
       }
     }
     emit(type, evt) {
-      (this.evts.get(type) || []).slice().forEach((handler) => { handler(evt); });
-      (this.evts.get('*') || []).slice().forEach((handler) => { handler(type, evt); });
+      (this._listeners.get(type) || []).slice().forEach((handler) => { handler(evt); });
+      (this._listeners.get('*') || []).slice().forEach((handler) => { handler(type, evt); });
     }
   }
 
   const randStr = () => Math.random().toString(36).substr(2);
 
+  const msgBlog = "blob";
+  const msgText = "text";
+
+  const defaultOptions = {
+    headers: {},
+    wsMsgType: msgText,
+    wsHeartBeatTime: 10000,
+    withCredentials: true,
+  };
+
   class CS extends Emiter {
-    constructor(url) {
+    constructor(url, options) {
       super();
+      if (typeof url === 'object') {
+        options = url;
+        url = options.url;
+      }
+      if (!url) {
+        throw new Error("cs initial must require url")
+      }
+
+
       this.url = url;
+      this.options = Object.assign({}, defaultOptions, options || {});
       this.sendTimeout = 10000;
       this._progress = new Map();
       this._init();
@@ -60,6 +80,8 @@
       }
       this.adapter.close();
       this.adapter = null;
+      this.wshb && clearInterval(this.wshb);
+      this.wshb = null;
     }
     async send(cmd, data) {
       const body = { cmd, data };
@@ -72,9 +94,10 @@
           method: "POST",
           headers: {
             'Content-Type': "application/json",
+            ...(this.options.headers || {}),
           },
           body: JSON.stringify(body),
-          credentials: 'include',
+          credentials: this.options.withCredentials ? 'include' : 'omit',
         }).then(r => r.json());
       }
 
@@ -101,12 +124,24 @@
     _initWs() {
       const ws = new WebSocket(this.url);
       ws.addEventListener('close', e => {
-        console.log(e);
+        this.wshb && clearInterval(this.wshb);
+        this.wshb = null;
       });
+      // 心跳
+      this.wshb = setInterval(() => {
+        const hb = this.options.wsMsgType == msgBlog ? new Blob([''], { type: 'text/plain' }) : "";
+        ws.send(hb);
+      }, this.options.wsHeartBeatTime);
       return ws
     }
     _initHttp() {
-      return new EventSource(this.url)
+      if (this.options.withCredentials === false) {
+        console.warn("[CS]http adapter required Cookie to work fine, but you set withCredentials=false, Server-Send Event maybe invalid");
+      }
+      return new EventSource(this.url, {
+        headers: this.options.headers,
+        withCredentials: this.options.withCredentials,
+      })
     }
     _events() {
       this.adapter.onopen = e => {
@@ -121,8 +156,12 @@
       };
       this.adapter.onmessage = this._onMessage.bind(this);
     }
-    _onMessage(e) {
-      const body = JSON.parse(e.data);
+    async _onMessage(e) {
+      let raw = e.data;
+      if (raw instanceof Blob) {
+        raw = await raw.text();
+      }
+      const body = JSON.parse(raw);
       this.emit('cs.message', body);
       const { cmd, seqno, data } = body;
       this.emit(cmd, data);
@@ -133,9 +172,6 @@
         const [resolve] = p;
         resolve(body);
       }
-    }
-    _invokeProgress() {
-
     }
     _sendByWs(body) {
       return new Promise((resolve, reject) => {
@@ -164,7 +200,10 @@
         }, this.sendTimeout);
 
         this._progress.set(seqno, [resolveH]);
-        const s = JSON.stringify(body);
+        let s = JSON.stringify(body);
+        if (this.options.wsMsgType !== msgText) {
+          s = new Blob([s], { type: 'text/plain' });
+        }
         this.adapter.send(s);
       })
     }

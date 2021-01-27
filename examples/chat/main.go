@@ -17,7 +17,7 @@ func assert(err error) {
 
 func main() {
 	httpAdapter := xhttp.New()
-	http.Handle("/http", httpAdapter)
+	http.Handle("/sse", httpAdapter)
 
 	wsAdapter := xwebsocket.New()
 	http.Handle("/ws", wsAdapter)
@@ -46,7 +46,6 @@ func main() {
 			Cmd:  "user_online",
 			Data: body,
 		})
-		// c.OK()
 	})
 
 	user := srv.Group(func(c *cs.Context) {

@@ -12,6 +12,7 @@ import (
 type Conn struct {
 	*websocket.Conn
 	writeMu sync.Mutex
+	msgType int
 }
 
 type reqMessage struct {
@@ -42,14 +43,20 @@ func (c *Conn) Send(v ...*cs.Response) error {
 	c.writeMu.Lock()
 	defer c.writeMu.Unlock()
 	for _, msg := range v {
-		j := &responseData{
+		resp := &responseData{
 			Cmd:   msg.Cmd,
 			Seqno: msg.Seqno,
 			Code:  msg.Code,
 			Msg:   msg.Msg,
 			Data:  msg.Data,
 		}
-		if err := c.Conn.WriteJSON(j); err != nil {
+
+		j, err := json.Marshal(resp)
+		if err != nil {
+			return err
+		}
+
+		if err := c.Conn.WriteMessage(c.msgType, json.RawMessage(j)); err != nil {
 			return err
 		}
 	}
