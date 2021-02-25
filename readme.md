@@ -131,24 +131,6 @@ func main() {
 }
 ```
 
-[使用 gnet](./gnet), [gnet](https://github.com/panjf2000/gnet) 是一个性能非常高的网络框架，尤其在超高并发情况下性能更优，使用 gnet 作为 tcp 服务的底层框架
-
-```go
-import (
-  "github.com/eyasliu/cs/xgnet"
-)
-
-func main() {
-  server := xgnet.New("127.0.0.1:8520")
-  srv, err := server.Srv()
-  if err != nil {
-    panic(err)
-  }
-
-  srv.Run() // 阻塞运行
-}
-```
-
 [用在 HTTP](./xhttp)，支持请求响应，支持服务器主动推送
 
 ```go
