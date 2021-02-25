@@ -1,11 +1,12 @@
 {
-  "name": "cssdk",
+  "name": "cmdsrv-sdk",
   "version": "1.0.0",
   "description": "",
-  "main": "sdk.js",
+  "main": "dist/sdk.js",
   "scripts": {
     "build": "npm run clean && rollup -c",
-    "dev": "rollup -c --watch"
+    "dev": "rollup -c --watch",
+    "clean": "rm -rf ./dist"
   },
   "author": "",
   "license": "ISC",

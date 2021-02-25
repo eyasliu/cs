@@ -14,14 +14,14 @@ export default {
     // exports: 'named'
   }, {
     name: 'CS',
-    file: `./dist/cssdk-${version}.js`,
+    file: `./dist/cssdk.js`,
     format: 'umd',
     // exports: 'named'
   }, {
     compact: true,
     plugins: [minify({ comments: false })],
     name: 'CS',
-    file: `./dist/cssdk-${version}.min.js`,
+    file: `./dist/cssdk.min.js`,
     format: 'umd',
     // exports: 'named'
   }],
