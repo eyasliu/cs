@@ -7,10 +7,11 @@ import (
 	"github.com/eyasliu/cs"
 )
 
+// Config 配置项
 type Config struct {
-	MsgType       SSEMsgType // 消息类型
-	HeartbeatTime time.Duration
-	SIDKey        string
+	MsgType       SSEMsgType    // 消息类型
+	HeartbeatTime time.Duration // SSE 心跳时长
+	SIDKey        string        // sid 的 cookie key 名称
 }
 
 type reqMessage struct {

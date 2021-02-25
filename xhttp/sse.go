@@ -10,13 +10,15 @@ import (
 	"github.com/eyasliu/cs"
 )
 
+// SSEMsgType SSE 的消息时间模式
 type SSEMsgType byte
 
 const (
-	SSEEvent   = 0
-	SSEMessage = 1
+	SSEEvent   = 0 // 使用事件, cmd 和 data 分开
+	SSEMessage = 1 // 使用消息, cmd 和 data 都放到sse 的 data 域
 )
 
+// SSEConn SSE 的连接实例
 type SSEConn struct {
 	w         http.ResponseWriter
 	flusher   http.Flusher
@@ -36,7 +38,7 @@ func newSSEConn(w http.ResponseWriter, msgType SSEMsgType, heartbeatTime time.Du
 	flusher, ok := s.w.(http.Flusher)
 
 	if !ok {
-		return nil, errors.New("Streaming unsupported!")
+		return nil, errors.New("Streaming unsupported")
 	}
 	s.flusher = flusher
 	err := s.init()
@@ -75,6 +77,7 @@ func (s *SSEConn) init() error {
 	return nil
 }
 
+// Send 给 sse 连接推送数据
 func (s *SSEConn) Send(v ...*cs.Response) error {
 	if s.w == nil {
 		err := errors.New("connection is already closed")

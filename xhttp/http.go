@@ -13,6 +13,7 @@ import (
 	"github.com/eyasliu/cs"
 )
 
+// HTTP cs 的 HTTP 适配器
 type HTTP struct {
 	srv       *cs.Srv
 	receive   chan *reqMessage
@@ -26,6 +27,7 @@ type HTTP struct {
 
 var defaultHeartBeatTime = 10 * time.Second
 
+// New 实例化适配器
 func New() *HTTP {
 	h := &HTTP{
 		sidKey:  "sid",
@@ -37,6 +39,7 @@ func New() *HTTP {
 	return h
 }
 
+// Handler impl http.HandlerFunc to handler http request
 func (h *HTTP) Handler(w http.ResponseWriter, req *http.Request) {
 	if h.srv == nil {
 		w.WriteHeader(500)
@@ -56,11 +59,12 @@ func (h *HTTP) Handler(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-// ServeHTTP impl http.Handler to upgrade to websocket protocol
+// ServeHTTP impl http.Handler to handler http request
 func (h *HTTP) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	h.Handler(w, req)
 }
 
+// Srv 返回cs.Srv 实例，如果没有绑定实例则初始化一个
 func (h *HTTP) Srv() *cs.Srv {
 	if h.srv == nil {
 		h.srv = cs.New(h)
@@ -68,6 +72,7 @@ func (h *HTTP) Srv() *cs.Srv {
 	return h.srv
 }
 
+// Write 实现 cs.ServerAdapter 接口，给连接推送消息
 func (h *HTTP) Write(sid string, resp *cs.Response) error {
 	conns, ok := h.session[sid]
 	if !ok {
@@ -81,12 +86,14 @@ func (h *HTTP) Write(sid string, resp *cs.Response) error {
 	return nil
 }
 
+// Read 实现 cs.ServerAdapter 接口，读取消息，每次返回一条，循环读取
 func (h *HTTP) Read(srv *cs.Srv) (sid string, req *cs.Request, err error) {
 	h.srv = srv
 	<-make(chan struct{})
 	return "", nil, errors.New("HTTP Adapter unsupport Read")
 }
 
+// Close 实现 cs.ServerAdapter 接口，关闭指定连接
 func (h *HTTP) Close(sid string) error {
 	conns, ok := h.session[sid]
 	if !ok {
@@ -101,6 +108,7 @@ func (h *HTTP) Close(sid string) error {
 	return nil
 }
 
+// GetAllSID 实现 cs.ServerAdapter 接口，获取当前服务所有SID，用于遍历连接
 func (h *HTTP) GetAllSID() []string {
 	sids := make([]string, 0, len(h.session))
 	h.sessionMu.RLock()
@@ -111,6 +119,7 @@ func (h *HTTP) GetAllSID() []string {
 	return sids
 }
 
+// 基于cookie，设置会话sid
 func (h *HTTP) setSid(w http.ResponseWriter, req *http.Request) string {
 	cookie, err := req.Cookie(h.sidKey)
 	var sid string
@@ -132,6 +141,7 @@ func (h *HTTP) setSid(w http.ResponseWriter, req *http.Request) string {
 	return sid
 }
 
+// 处理cmd路由
 func (h *HTTP) invokeHandle(sid string, w http.ResponseWriter, req *http.Request) {
 	reqData := &requestData{}
 	respData := &cs.Response{}
@@ -166,6 +176,7 @@ func (h *HTTP) invokeHandle(sid string, w http.ResponseWriter, req *http.Request
 	w.Write(respBt)
 }
 
+// 处理 sse 连接
 func (h *HTTP) invokeSSE(sid string, w http.ResponseWriter, req *http.Request) {
 	conn, err := newSSEConn(w, h.msgType, h.hbTime)
 	if err != nil {
