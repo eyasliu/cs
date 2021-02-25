@@ -118,7 +118,7 @@ func (h *HTTP) setSid(w http.ResponseWriter, req *http.Request) string {
 		atomic.AddUint32(&h.sidCount, 1)
 		// 因为sid是存cookie的，而程序每次重启，这个计数器都会重置为 0
 		// 只使用计数器会导致 sid 重复，需要加上其他变量，计数器可以保证在高并发时不会重复
-		sid := fmt.Sprintf("http.%d-%d", time.Now().Unix(), h.sidCount)
+		sid = fmt.Sprintf("http.%d-%d", time.Now().Unix(), h.sidCount)
 		cookie = &http.Cookie{
 			Name:     h.sidKey,
 			Value:    sid,

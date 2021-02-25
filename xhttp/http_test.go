@@ -5,7 +5,7 @@ package xhttp_test
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"testing"
@@ -24,7 +24,8 @@ func sendToHttp(url string, r interface{}) (map[string]interface{}, error) {
 		return nil, err
 	}
 	if resp.StatusCode > 300 {
-		return nil, errors.New("http status code fail")
+
+		return nil, fmt.Errorf("http status code fail: %d", resp.StatusCode)
 	}
 	resBt, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
@@ -58,7 +59,7 @@ func TestHttpSrv(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 
 		res, err := sendToHttp("http://127.0.0.1:5673/cmd1", data)
-
+		t.Log(res, err)
 		t.Assert(err, nil)
 		t.Assert(res["cmd"], data["cmd"])
 		t.Assert(res["data"], data["data"])
