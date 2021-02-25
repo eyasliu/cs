@@ -1,4 +1,4 @@
-# Cmd Srv
+# Command Service
 
 [![Build Status](https://travis-ci.com/eyasliu/cs.svg)](https://travis-ci.com/eyasliu/cs)
 [![Go Doc](https://godoc.org/github.com/eyasliu/cs?status.svg)](https://godoc.org/github.com/eyasliu/cs)
