@@ -11,14 +11,15 @@ import (
 
 // Srv 基于命令的消息处理框架
 type Srv struct {
-	Server         []ServerAdapter // 服务器适配器
-	serverMu       sync.Mutex
-	isRunning      bool                     // 服务是否已经正在运行
-	runErr         chan error               // 服务运行错误通知
-	middleware     []HandlerFunc            // 全局路由中间件
-	pushMiddleware []PushHandlerFunc        // 全局推送中间件
-	routes         map[string][]HandlerFunc // 路由的处理函数
-	state          *State                   // SID 会话的状态数据
+	Server             []ServerAdapter // 服务器适配器
+	serverMu           sync.Mutex
+	isRunning          bool                     // 服务是否已经正在运行
+	runErr             chan error               // 服务运行错误通知
+	middleware         []HandlerFunc            // 全局路由中间件
+	pushMiddleware     []PushHandlerFunc        // 全局推送中间件
+	internalMiddleware []HandlerFunc            // 内部的中间件，执行顺序在洋葱模型的最里层
+	routes             map[string][]HandlerFunc // 路由的处理函数
+	state              *State                   // SID 会话的状态数据
 }
 
 // New 指定服务器实例化一个消息服务
@@ -31,6 +32,9 @@ func New(server ...ServerAdapter) *Srv {
 	}
 	// 推送前填充数据
 	srv.UsePush(fillPushResp)
+
+	// 内部中间件
+	srv.useInternal(internalPanicHandler)
 	return srv
 }
 
@@ -64,6 +68,11 @@ func (s *Srv) SetStateAdapter(adapter gcache.Adapter) *Srv {
 // Use 增加全局中间件
 func (s *Srv) Use(handlers ...HandlerFunc) *Srv {
 	s.middleware = append(s.middleware, handlers...)
+	return s
+}
+
+func (s *Srv) useInternal(handlers ...HandlerFunc) *Srv {
+	s.internalMiddleware = append(s.internalMiddleware, handlers...)
 	return s
 }
 
@@ -173,7 +182,7 @@ func (s *Srv) NewContext(server ServerAdapter, sid string, req *Request) *Contex
 	routeHandlers, ok := s.routes[req.Cmd]
 	var handlers []HandlerFunc
 	if ok {
-		handlers = make([]HandlerFunc, 0, len(s.middleware)+len(routeHandlers))
+		handlers = make([]HandlerFunc, 0, len(s.middleware)+len(routeHandlers)+len(s.internalMiddleware))
 		handlers = append(handlers, s.middleware...)
 		handlers = append(handlers, routeHandlers...)
 		ctx.OK() // 匹配到了路由，但是 handler 没有设置响应
@@ -181,6 +190,7 @@ func (s *Srv) NewContext(server ServerAdapter, sid string, req *Request) *Contex
 		handlers = make([]HandlerFunc, 0, len(s.middleware)+1)
 		handlers = append(handlers, s.middleware...)
 	}
+	handlers = append(handlers, s.internalMiddleware...)
 	ctx.handlers = handlers
 	ctx.handlerIndex = -1
 	return ctx

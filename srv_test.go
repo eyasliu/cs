@@ -287,3 +287,53 @@ func TestSrv_State(t *testing.T) {
 		t.Assert(srv.GetState("test.sid", "tk"), nil)
 	})
 }
+
+func TestSrv_Exit(t *testing.T) {
+	srv := cs.New(&testAdapter{
+		request: []*cs.Request{
+			{"a", "1", []byte(`{"x":1}`)},
+			{"b", "2", []byte(`[{"y":2}]`)},
+			{"c", "3", nil},
+			{"d", "4", nil},
+		},
+	})
+	gtest.C(t, func(t *gtest.T) {
+		srv.Use(func(c *cs.Context) {
+			c.Set("t"+c.Cmd, "a")
+			c.Next()
+			c.Set("t"+c.Cmd, c.Get("t"+c.Cmd).(string)+"b")
+		})
+		srv.Use(cs.Recover())
+		srv.Handle("a", func(c *cs.Context) {
+			c.Set("ta", c.Get("ta").(string)+"c")
+			c.Exit(0)
+			c.Set("ta", c.Get("ta").(string)+"d")
+		})
+
+		srv.Handle("b", func(c *cs.Context) {
+			c.Set("tb", c.Get("tb").(string)+"c")
+			panic("test exit")
+		})
+
+		srv.Handle("c", func(c *cs.Context) {
+			c.Set("tc", c.Get("tc").(string)+"c")
+			c.IfErrExit(nil, 0)
+			c.Set("tc", c.Get("tc").(string)+"d")
+		})
+
+		srv.Handle("d", func(c *cs.Context) {
+			c.Set("td", c.Get("td").(string)+"c")
+			c.IfErrExit(errors.New("test error"), 0)
+			c.Set("td", c.Get("td").(string)+"d")
+		})
+
+		srv.Run()
+		time.Sleep(50 * time.Millisecond)
+
+		t.Assert(srv.GetState("test.sid", "ta"), "acb")
+		t.Assert(srv.GetState("test.sid", "tb"), "ac")
+		t.Assert(srv.GetState("test.sid", "tc"), "acdb")
+		t.Assert(srv.GetState("test.sid", "td"), "ac")
+	})
+
+}

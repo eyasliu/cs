@@ -116,6 +116,20 @@ func (c *Context) SetState(sid, key string, v interface{}) {
 	c.Srv.state.Set(sid, key, v)
 }
 
+// Exit 终止后续逻辑执行, code 错误码
+func (c *Context) Exit(code int) {
+	c.Response.Code = code
+	panic(internalExitPanic)
+}
+
+// IfErrExit 如果 err 不为空，则中断执行并直接返回
+func (c *Context) IfErrExit(err error, code int) {
+	if err != nil {
+		c.Err(err, code)
+		c.Exit(code)
+	}
+}
+
 // Err 响应错误，如果错误对象为空则忽略不处理
 func (c *Context) Err(err error, code int) {
 	if err != nil {
