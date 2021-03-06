@@ -184,13 +184,13 @@ func (s *Srv) NewContext(server ServerAdapter, sid string, req *Request) *Contex
 	if ok {
 		handlers = make([]HandlerFunc, 0, len(s.middleware)+len(routeHandlers)+len(s.internalMiddleware))
 		handlers = append(handlers, s.middleware...)
+		handlers = append(handlers, s.internalMiddleware...)
 		handlers = append(handlers, routeHandlers...)
 		ctx.OK() // 匹配到了路由，但是 handler 没有设置响应
 	} else {
 		handlers = make([]HandlerFunc, 0, len(s.middleware)+1)
 		handlers = append(handlers, s.middleware...)
 	}
-	handlers = append(handlers, s.internalMiddleware...)
 	ctx.handlers = handlers
 	ctx.handlerIndex = -1
 	return ctx

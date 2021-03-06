@@ -327,13 +327,13 @@ func TestSrv_Exit(t *testing.T) {
 			c.Set("td", c.Get("td").(string)+"d")
 		})
 
-		srv.Run()
+		go srv.Run()
 		time.Sleep(50 * time.Millisecond)
 
-		t.Assert(srv.GetState("test.sid", "ta"), "acb")
-		t.Assert(srv.GetState("test.sid", "tb"), "ac")
-		t.Assert(srv.GetState("test.sid", "tc"), "acdb")
-		t.Assert(srv.GetState("test.sid", "td"), "ac")
+		t.Assert(srv.GetState("", "ta"), "acb")
+		t.Assert(srv.GetState("", "tb"), "acb")
+		t.Assert(srv.GetState("", "tc"), "acdb")
+		t.Assert(srv.GetState("", "td"), "acb")
 	})
 
 }
