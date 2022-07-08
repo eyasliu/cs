@@ -16,7 +16,7 @@ import (
 
 // WS websocket 适配器
 type WS struct {
-	upgrader  websocket.Upgrader
+	Upgrader  websocket.Upgrader
 	session   map[string]*Conn
 	sessionMu sync.RWMutex
 	receive   chan *reqMessage
@@ -28,7 +28,7 @@ var _ cs.ServerAdapter = &WS{}
 // New 实例化 websocket 适配器
 func New() *WS {
 	return &WS{
-		upgrader: websocket.Upgrader{
+		Upgrader: websocket.Upgrader{
 			ReadBufferSize:  1024,
 			WriteBufferSize: 1024,
 		},
@@ -44,7 +44,7 @@ func (ws *WS) Srv() *cs.Srv {
 
 // Handler impl http.HandlerFunc to upgrade to websocket protocol
 func (ws *WS) Handler(w http.ResponseWriter, req *http.Request) {
-	conn, err := ws.upgrader.Upgrade(w, req, nil)
+	conn, err := ws.Upgrader.Upgrade(w, req, nil)
 	if err != nil {
 		return
 	}
