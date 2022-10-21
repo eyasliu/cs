@@ -42,7 +42,12 @@ type TCP struct {
 // 	  Parser(string, []byte) ([][]byte, error),
 // })
 func New(v interface{}) *TCP {
+	srv := &TCP{
+		session: map[string]*Conn{},
+		receive: make(chan *reqMessage, 50),
+	}
 	var conf *Config
+
 	if _conf, ok := v.(*Config); ok {
 		conf = _conf
 	} else if addr, ok := v.(string); ok {
@@ -50,16 +55,16 @@ func New(v interface{}) *TCP {
 			Addr:    addr,
 			Network: "tcp",
 		}
+	} else if listener, ok := v.(net.Listener); ok {
+		conf = &Config{}
+		srv.listener = listener
 	}
 	if conf.MsgPkg == nil {
 		conf.MsgPkg = &DefaultPkgProto{}
 	}
+	srv.Config = conf
 
-	return &TCP{
-		Config:  conf,
-		session: map[string]*Conn{},
-		receive: make(chan *reqMessage, 50),
-	}
+	return srv
 }
 
 // Srv 使用该适配器创建命令消息服务
@@ -117,6 +122,9 @@ func (t *TCP) Run() error {
 }
 
 func (t *TCP) listen() error {
+	if t.listener != nil {
+		return nil
+	}
 	listener, err := net.Listen(t.Config.Network, t.Config.Addr)
 	t.listener = listener
 	return err
