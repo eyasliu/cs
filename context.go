@@ -1,6 +1,8 @@
 package cs
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
 	"reflect"
 
@@ -44,10 +46,10 @@ func (c *Context) Abort() {
 	c.handlerAbort = true
 }
 
-// Parse 解析并验证消息携带的参数，参考 Goframe 的 请求输入-对象处理 https://itician.org/pages/viewpage.action?pageId=1114185
+// Parse 解析并验证消息携带的参数，参考 Goframe 的 请求输入-对象处理 https://goframe.org/pages/viewpage.action?pageId=1114185
 // 支持 json 和 xml 数据流
 // 支持将数据解析为 *struct/**struct/*[]struct/*[]*struct/*map/*[]map
-// 如果目标值是 *struct/**struct/*[]struct/*[]*struct ，则会自动调用请求验证，参考 GoFrame 的 请求输入-请求校验 https://itician.org/pages/viewpage.action?pageId=1114244
+// 如果目标值是 *struct/**struct/*[]struct/*[]*struct ，则会自动调用请求验证，参考 GoFrame 的 请求输入-请求校验 https://goframe.org/pages/viewpage.action?pageId=1114244
 func (c *Context) Parse(pointer interface{}, mapping ...map[string]string) error {
 	var (
 		rv = reflect.ValueOf(pointer)
@@ -61,6 +63,9 @@ func (c *Context) Parse(pointer interface{}, mapping ...map[string]string) error
 	}
 	rv = rv.Elem()
 	rk = rv.Kind()
+	if rk == reflect.Map {
+		return json.Unmarshal(c.Response.Request.RawData, pointer)
+	}
 
 	// parse request data
 	data, err := gjson.LoadContent(c.Response.Request.RawData)
@@ -74,7 +79,7 @@ func (c *Context) Parse(pointer interface{}, mapping ...map[string]string) error
 		if err := data.GetStruct(".", pointer, mapping...); err != nil {
 			return err
 		}
-		if err := gvalid.CheckStruct(pointer, nil); err != nil {
+		if err := gvalid.CheckStruct(context.TODO(), pointer, nil); err != nil {
 			return err
 		}
 	case reflect.Array, reflect.Slice:
@@ -82,12 +87,12 @@ func (c *Context) Parse(pointer interface{}, mapping ...map[string]string) error
 			return err
 		}
 		for i := 0; i < rv.Len(); i++ {
-			if err := gvalid.CheckStruct(rv.Index(i), nil); err != nil {
+			if err := gvalid.CheckStruct(context.TODO(), rv.Index(i), nil); err != nil {
 				return err
 			}
 		}
 	case reflect.Map:
-		if err := data.ToMapToMapDeep(pointer); err != nil {
+		if err := data.MapToMap(pointer); err != nil {
 			return err
 		}
 	}
